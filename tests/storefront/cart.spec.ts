@@ -4,11 +4,13 @@ test.describe('Cart', () => {
   test('add product from detail page opens off-canvas cart', { tag: ['@smoke', '@mobile'] }, async ({ product, offcanvasCart, header, cfg }) => {
     const p = cfg.testData.simpleProduct;
     await product.open(p);
-    const price = await product.priceValue();
+    const guestPrices = cfg.features.guestPrices !== false;
+    const price = guestPrices ? await product.priceValue() : 0;
     await product.addToCart();
 
     await offcanvasCart.expectOpen();
     await expect(offcanvasCart.lineItem(p.name)).toBeVisible();
+    if (!guestPrices) return;
 
     // header widget refreshes asynchronously / on next page load → verify after reload
     await product.page.reload();
@@ -44,10 +46,11 @@ test.describe('Cart', () => {
     const p = cfg.testData.simpleProduct;
     await cartHelper.add(p, 1);
     await cart.open();
-    const single = await cart.totalValue();
+    const guestPrices = cfg.features.guestPrices !== false;
+    const single = guestPrices ? await cart.totalValue() : 0;
     await cart.setQuantity(p.name, 2);
     expect(await cart.quantityOf(p.name)).toBe(2);
-    await expect.poll(() => cart.totalValue()).toBeGreaterThan(single);
+    if (guestPrices) await expect.poll(() => cart.totalValue()).toBeGreaterThan(single);
   });
 
   test('remove product from cart page', { tag: '@smoke' }, async ({ cart, cartHelper, cfg }) => {

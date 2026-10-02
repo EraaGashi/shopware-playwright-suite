@@ -3,20 +3,25 @@ import { BasePage } from '../pages/BasePage';
 import { parsePrice } from '../utils/price';
 
 export class Header extends BasePage {
+  /** Themes may render separate desktop/mobile headers → always target the visible copy. */
+  private visible(selector: string): Locator {
+    return this.$(selector).locator('visible=true').first();
+  }
+
   get logo(): Locator {
-    return this.$(this.s.header.logo);
+    return this.visible(this.s.header.logo);
   }
   get searchInput(): Locator {
-    return this.$(this.s.header.searchInput).first();
+    return this.visible(this.s.header.searchInput);
   }
   get cartButton(): Locator {
-    return this.$(this.s.header.cart).first();
+    return this.visible(this.s.header.cart);
   }
   get accountButton(): Locator {
-    return this.$(this.s.header.accountButton).first();
+    return this.visible(this.s.header.accountButton);
   }
   get wishlistButton(): Locator {
-    return this.$(this.s.header.wishlist).first();
+    return this.visible(this.s.header.wishlist);
   }
 
   /** On mobile the search field is collapsed behind a toggle button. */
@@ -48,12 +53,13 @@ export class Header extends BasePage {
   async cartTotal(): Promise<number> {
     // textContent: the total is visually hidden on mobile (innerText would be empty)
     const text = (await this.$(this.s.header.cartTotal).first().textContent()) ?? '';
-    const value = parsePrice(text);
+    // some themes only expose the total in an aria label ("contains 2 items … €99.99") → last number wins
+    const value = parsePrice(text.match(/\d[\d.,]*/g)?.pop() ?? '');
     return Number.isNaN(value) ? 0 : value;
   }
 
   async cartBadgeCount(): Promise<number> {
-    const badge = this.$(this.s.header.cartBadge).first();
+    const badge = this.visible(this.s.header.cartBadge);
     if (!(await badge.isVisible())) return 0;
     return parseInt((await badge.innerText()).trim(), 10) || 0;
   }

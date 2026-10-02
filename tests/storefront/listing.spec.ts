@@ -12,13 +12,14 @@ test.describe('Product listing', () => {
     expect(await listing.productBoxes.count()).toBeGreaterThan(0);
     const first = listing.productBoxes.first();
     await expect(first.locator(s.productName)).not.toBeEmpty();
-    await expect(first.locator(s.productPrice).first()).toContainText(/\d/);
+    if (cfg.features.guestPrices !== false) await expect(first.locator(s.productPrice).first()).toContainText(/\d/);
     await expect(first.locator(s.productImage).first()).toBeVisible();
   });
 
   test('product box links to the detail page', { tag: '@smoke' }, async ({ listing, product }) => {
     const name = await listing.openProduct(0);
-    await expect(product.name).toHaveText(name);
+    // variant PDPs may append the selected option ("…, XL") to the listing name
+    await expect(product.name).toContainText(name);
   });
 
   test('pagination navigates to the next page', async ({ page, listing, cfg }) => {

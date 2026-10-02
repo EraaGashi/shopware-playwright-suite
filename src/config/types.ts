@@ -23,6 +23,16 @@ export interface FeatureFlags {
   currencySwitch: boolean;
   /** Mobile off-canvas navigation exists (Shopware default). */
   mobileNavigation: boolean;
+  /**
+   * Orders can be placed end-to-end (needs an offline payment method, e.g. prepayment).
+   * false → checkout tests stop on the confirm page (redirect-only payments like PayPal, or production).
+   */
+  orderPlacement: boolean;
+  /**
+   * Guests see prices, tax notice, delivery info and cart totals (default true).
+   * false for B2B shops that show "log in to see prices" instead.
+   */
+  guestPrices?: boolean;
 }
 
 export interface ProductRef {
@@ -48,6 +58,29 @@ export interface CustomerAddress {
   countryIso: string;
   /** Visible country name in the storefront select (used by UI flows). */
   countryLabel?: string;
+  /** Only needed when the shop requires a phone number (Store API + registration form). */
+  phoneNumber?: string;
+}
+
+/**
+ * Additional registration form field (B2B forms etc.), filled in the given order.
+ * Selects: `value` is an option value or label; omitted = first non-empty option.
+ * `{random}` in a value is replaced by 9 random digits (for unique IDs).
+ */
+export interface ExtraFormField {
+  selector: string;
+  value?: string;
+}
+
+/**
+ * A test that currently fails because of a confirmed bug in the shop (not in the test).
+ * Matching tests are marked "expected to fail": the run stays green, the report shows the reason,
+ * and once the shop is fixed the test fails with "expected to fail, but passed" → remove the entry.
+ */
+export interface KnownIssue {
+  /** Substring of the test title (or a RegExp). */
+  test: string | RegExp;
+  reason: string;
 }
 
 export interface ProjectConfig {
@@ -78,6 +111,11 @@ export interface ProjectConfig {
     wishlist: string;
     /** Path of a CMS page containing the contact form (null = discover via footer). */
     contactPage: string | null;
+    /**
+     * Where registration ends when new accounts need manual approval (B2B), e.g. '/account/register/success'.
+     * Unset = customer is logged in and lands on routes.account.
+     */
+    registerPending?: string;
   };
 
   testData: {
@@ -108,6 +146,7 @@ export interface ProjectConfig {
       /** Salutation option index in the select (0 = "not specified"). */
       salutationIndex: number;
       address: CustomerAddress;
+      extraFields?: ExtraFormField[];
     };
     /** Visible text of the footer link leading to the contact form. */
     contactLinkText: RegExp;
@@ -125,6 +164,9 @@ export interface ProjectConfig {
 
   /** Selector overrides for themes / customisations. Merged over Shopware 6.7 defaults. */
   selectors?: DeepPartial<Selectors>;
+
+  /** Confirmed shop bugs → matching tests are expected to fail (see KnownIssue). */
+  knownIssues?: KnownIssue[];
 }
 
 /** Final config after env overrides + selector merge. */

@@ -28,3 +28,12 @@ test('API access for test data setup', async ({ cfg, adminApi, storeApi }) => {
   const id = await storeApi.productIdByNumber(cfg.testData.simpleProduct.productNumber);
   expect(id).toMatch(/^[0-9a-f]{32}$/);
 });
+
+test.describe('cookie consent', () => {
+  test.use({ acceptCookies: false });
+
+  test('record real consent cookies for all tests', async ({ cfg, cookieBanner }) => {
+    test.skip(!cfg.features.cookieBanner, 'No cookie banner in this shop');
+    await cookieBanner.recordConsent(cfg.baseURL);
+  });
+});

@@ -11,12 +11,28 @@ export class CheckoutPage extends BasePage {
   }
 
   async openConfirm(): Promise<void> {
-    await this.goto(this.cfg.routes.checkoutConfirm);
+    // Payment SDKs (PayPal / Apple Pay / Google Pay) can delay the `load` event far beyond the shop's
+    // own response → wait for the confirm form, give `load` a bounded grace period instead of failing.
+    await this.page.goto(this.cfg.routes.checkoutConfirm, { waitUntil: 'domcontentloaded' });
+    if (new URL(this.page.url()).pathname.endsWith(this.cfg.routes.checkoutConfirm)) {
+      await expect(this.$(this.s.checkout.confirmForm).first()).toBeAttached();
+    }
+    await this.page.waitForLoadState('load', { timeout: 10_000 }).catch(() => undefined);
   }
 
   async expectOnConfirm(): Promise<void> {
     await this.expectPath(this.cfg.routes.checkoutConfirm);
-    await expect(this.submitButton).toBeVisible();
+    await expect(this.$(this.s.checkout.confirmForm).first()).toBeAttached();
+    // payment plugins (e.g. PayPal) hide the core submit button and render their own
+    if (this.cfg.features.orderPlacement) await expect(this.submitButton).toBeVisible();
+  }
+
+  /** The order can be handed off: core submit button visible, or a payment plugin rendered its own buttons. */
+  async expectPaymentReady(): Promise<void> {
+    await expect(this.$(`${this.s.checkout.paymentMethod}:checked`)).toHaveCount(1);
+    await expect(
+      this.submitButton.locator('visible=true').or(this.$(this.s.checkout.paymentButtons)).first(),
+    ).toBeAttached();
   }
 
   async selectPaymentMethod(label: string): Promise<void> {

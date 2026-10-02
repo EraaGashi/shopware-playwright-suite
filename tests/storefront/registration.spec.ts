@@ -4,7 +4,7 @@ import { buildCustomer } from '../../src/data/customer';
 test.describe('Customer registration', () => {
   test.beforeEach(async ({ cfg, auth }) => {
     skipUnless(cfg.features.registration, 'registration');
-    await auth.open();
+    await auth.openRegistration();
   });
 
   test('new customer can register', { tag: ['@smoke', '@mobile'] }, async ({ page, cfg, auth, adminApi, requireWriteAccess }) => {
@@ -12,7 +12,10 @@ test.describe('Customer registration', () => {
     const customer = buildCustomer(cfg);
     await auth.register(customer);
 
-    if (cfg.features.doubleOptInRegistration) {
+    if (cfg.routes.registerPending) {
+      // account must be approved by the shop first → "request under review" page, not logged in
+      await expect(page).toHaveURL(new RegExp(cfg.routes.registerPending.replace(/[.]/g, '\\.')));
+    } else if (cfg.features.doubleOptInRegistration) {
       await expect(page.locator(cfg.selectors.page.alertSuccess).first()).toBeVisible();
     } else {
       await expect(page).toHaveURL(new RegExp(`${cfg.routes.account}(\\?.*)?$`));

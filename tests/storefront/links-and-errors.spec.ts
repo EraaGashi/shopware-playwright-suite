@@ -48,7 +48,7 @@ test.describe('Error handling', () => {
     const res = await page.goto(`/e2e-not-existing-${Date.now()}`);
     expect(res?.status()).toBe(404);
     await expect(page.locator(cfg.selectors.error.body)).toBeAttached();
-    await expect(page.locator(cfg.selectors.header.logo)).toBeVisible();
+    await expect(page.locator(cfg.selectors.header.logo).locator('visible=true').first()).toBeVisible();
     await expect(page.locator(cfg.selectors.error.backToShop).first()).toBeVisible();
   });
 

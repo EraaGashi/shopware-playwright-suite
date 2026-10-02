@@ -75,6 +75,8 @@ type TestFixtures = {
   loggedInPage: Page;
   /** Skips the test when ALLOW_WRITE_TESTS=false (production-safe runs). */
   requireWriteAccess: void;
+  /** Auto: marks tests listed in cfg.knownIssues as expected to fail. */
+  knownIssue: void;
 };
 
 export const test = base.extend<TestFixtures, WorkerFixtures>({
@@ -124,6 +126,17 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   contact: async ({ page, cfg }, use) => use(new ContactPage(page, cfg)),
   cartHelper: async ({ page, cfg, storeApi }, use) => use(new CartHelper(page, cfg, storeApi)),
 
+  knownIssue: [
+    async ({ cfg }, use, testInfo) => {
+      const issue = cfg.knownIssues?.find((k) =>
+        typeof k.test === 'string' ? testInfo.title.includes(k.test) : k.test.test(testInfo.title),
+      );
+      if (issue) testInfo.fail(true, `Known shop issue: ${issue.reason}`);
+      await use();
+    },
+    { auto: true },
+  ],
+
   requireWriteAccess: async ({ cfg }, use) => {
     test.skip(!cfg.env.allowWriteTests, 'Write tests disabled (ALLOW_WRITE_TESTS=false)');
     await use();
@@ -141,7 +154,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       await CookieBanner.preAccept(ctx, cfg.baseURL);
       const p = await ctx.newPage();
       const auth = new AuthPage(p, cfg);
-      await auth.open();
+      await auth.openRegistration();
       await auth.register(customer);
       await expect(p).not.toHaveURL(/\/account\/login/);
       await ctx.close();

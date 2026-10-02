@@ -83,6 +83,7 @@ export class StoreApiClient {
         zipcode: customer.address.zipcode,
         city: customer.address.city,
         countryId,
+        ...(customer.address.phoneNumber ? { phoneNumber: customer.address.phoneNumber } : {}),
       },
     });
   }

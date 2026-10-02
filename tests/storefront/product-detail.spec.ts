@@ -7,11 +7,14 @@ test.describe('Product detail page', () => {
     const s = cfg.selectors.product;
     await expect(product.name).toHaveText(p.name);
     await expect(product.productNumber).toContainText(p.productNumber);
-    expect(await product.priceValue()).toBeGreaterThan(0);
     await expect(product.buyButton).toBeEnabled();
     await expect(product.page.locator(s.gallery).first()).toBeVisible();
-    await expect(product.page.locator(s.tax).first()).toBeVisible();
-    await expect(product.page.locator(s.delivery).first()).toBeVisible();
+    // B2B shops (guestPrices=false) show price, tax and delivery info only after login
+    if (cfg.features.guestPrices !== false) {
+      expect(await product.priceValue()).toBeGreaterThan(0);
+      await expect(product.page.locator(s.tax).first()).toBeVisible();
+      await expect(product.page.locator(s.delivery).first()).toBeVisible();
+    }
     await expect(product.page.locator(s.description).first()).toBeAttached();
   });
 
@@ -25,9 +28,12 @@ test.describe('Product detail page', () => {
     const v = cfg.testData.variantProduct;
     await product.open(v);
     await expect(product.configuratorGroups).toHaveCount(v.optionGroups.length);
+    const urlBefore = page.url();
     const { before, after } = await product.switchVariant(v.optionGroups.length - 1);
     expect(after).not.toEqual(before);
-    await expect(page).toHaveURL(new RegExp(after.replace(/[.]/g, '\\.')));
+    await expect(page).not.toHaveURL(urlBefore);
+    // SEO URLs end in the product number; canonical /detail/{id} URLs (no SEO URL) don't
+    if (urlBefore.includes(before)) await expect(page).toHaveURL(new RegExp(after.replace(/[.]/g, '\\.')));
   });
 
   test('breadcrumb links back to the category', async ({ product, cfg, page }) => {

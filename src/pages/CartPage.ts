@@ -39,7 +39,10 @@ export class CartPage extends BasePage {
 
   async setQuantity(name: string, qty: number): Promise<void> {
     const input = this.lineItem(name).locator(this.s.cart.quantityInput);
+    // some themes replace the +/- number input with a <select>
+    const isSelect = await input.evaluate((el) => el.tagName === 'SELECT');
     await this.waitForXhr('/checkout/line-item/change-quantity', async () => {
+      if (isSelect) return input.selectOption(String(qty));
       await input.fill(String(qty));
       await input.press('Enter');
     });

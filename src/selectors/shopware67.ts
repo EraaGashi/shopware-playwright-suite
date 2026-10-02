@@ -115,6 +115,8 @@ export const shopware67Selectors = {
     delivery: '.product-detail-delivery-information, .delivery-information',
     tax: '.product-detail-tax',
     wishlistButton: '.product-wishlist-action, .product-wishlist-btn',
+    /** guests: off-canvas asking to accept the wishlist cookie before the first add */
+    wishlistConsentAccept: '.offcanvas.show .js-wishlist-cookie-accept',
     crossSelling: '.product-cross-selling, .cms-element-cross-selling',
   },
   offcanvasCart: {
@@ -156,15 +158,23 @@ export const shopware67Selectors = {
   },
   register: {
     form: 'form.register-form',
+    /** themes that hide the form behind a "New customer" tab / collapse */
+    reveal: '[role="tab"][aria-controls="newCustomer"]',
     salutation: '#personalSalutation',
     firstName: '[name="billingAddress[firstName]"]',
     lastName: '[name="billingAddress[lastName]"]',
     email: '#personalMail',
     password: '#personalPassword',
+    /** only rendered when "require e-mail / password confirmation" is on in the login & registration settings */
+    emailConfirmation: '[name="emailConfirmation"]',
+    passwordConfirmation: '[name="passwordConfirmation"]',
     createAccount: 'input[name="createCustomerAccount"]',
+    /** themes with an inverted "continue as guest" checkbox instead of createCustomerAccount */
+    guestToggle: '#continueAsGuest',
     street: '[name="billingAddress[street]"]',
     zipcode: '[name="billingAddress[zipcode]"]',
     city: '[name="billingAddress[city]"]',
+    phone: '[name="billingAddress[phoneNumber]"]',
     country: '[name="billingAddress[countryId]"]',
     countryState: '[name="billingAddress[countryStateId]"]',
     differentShipping: '.js-different-shipping-checkbox',
@@ -188,6 +198,8 @@ export const shopware67Selectors = {
     confirmForm: '#confirmOrderForm',
     tos: '#tos',
     submitOrder: '#confirmFormSubmit',
+    /** payment plugins that replace the submit button with their own (SwagPayPal smart buttons) */
+    paymentButtons: '[data-swag-paypal-smart-payment-buttons]',
     paymentMethod: '.payment-method-input',
     paymentMethodLabel: '.payment-method-label',
     shippingMethod: '.shipping-method-input',

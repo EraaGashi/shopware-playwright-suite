@@ -9,3 +9,6 @@ playwright/.cache/
 .auth/
 *.log
 .DS_Store
+
+# Local editor history (VS Code "Local History" etc.) — contains copies of .env
+.history/

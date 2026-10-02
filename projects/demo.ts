@@ -26,6 +26,7 @@ const config: ProjectConfig = {
     languageSwitch: false,
     currencySwitch: false,
     mobileNavigation: true,
+    orderPlacement: true,
   },
 
   routes: {

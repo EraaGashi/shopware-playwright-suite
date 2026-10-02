@@ -43,7 +43,8 @@ export class ContactPage extends BasePage {
       [c.comment, d.comment],
     ];
     for (const [sel, val] of pairs) {
-      if (val !== undefined && (await f.locator(sel).count())) await f.locator(sel).first().fill(val);
+      // hidden fields are preset by the theme (e.g. lastName="-" when only one name field is shown)
+      if (val !== undefined && (await f.locator(sel).first().isVisible())) await f.locator(sel).first().fill(val);
     }
   }
 

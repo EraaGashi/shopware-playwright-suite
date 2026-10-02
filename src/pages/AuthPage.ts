@@ -40,15 +40,40 @@ export class AuthPage extends BasePage {
   }
 
   // ---------------- registration ----------------
+  /** Default Shopware renders the form on /account/login too, but some themes only on /account/register. */
+  async openRegistration(): Promise<void> {
+    await this.goto(this.cfg.routes.register);
+    await this.revealRegistration();
+  }
+
+  /** Clicks the theme's "New customer" tab/collapse if the form is rendered but hidden. */
+  async revealRegistration(): Promise<void> {
+    const firstName = this.registerForm.locator(this.s.register.firstName).first();
+    if (await firstName.isVisible()) return;
+    const reveal = this.$(this.s.register.reveal).locator('visible=true').first();
+    if (await reveal.count()) await reveal.click();
+    await expect(firstName).toBeVisible();
+  }
+
   async fillRegistration(c: TestCustomer, opts: { guest?: boolean } = {}): Promise<void> {
     const r = this.s.register;
     const form = this.registerForm;
+    await this.revealRegistration();
 
     // /checkout/register: checkbox; /account/login: hidden input (value=1) → leave it alone
     const createAccount = form.locator(`${r.createAccount}[type="checkbox"]`);
+    const guestToggle = form.locator(r.guestToggle);
     if (await createAccount.count()) {
       // checkout variant: checked = create account, unchecked = guest
       await createAccount.setChecked(!opts.guest, { force: true });
+    } else if (await guestToggle.count()) {
+      await guestToggle.setChecked(!!opts.guest, { force: true });
+    }
+
+    // project-specific fields (B2B forms), in order — later selects may depend on earlier ones
+    for (const f of this.cfg.testData.customer.extraFields ?? []) {
+      const value = f.value?.replace('{random}', () => String(Math.floor(1e8 + Math.random() * 9e8)));
+      await this.setField(form.locator(f.selector).first(), value);
     }
 
     const salutation = form.locator(r.salutation);
@@ -57,17 +82,43 @@ export class AuthPage extends BasePage {
     await form.locator(r.firstName).fill(c.firstName);
     await form.locator(r.lastName).fill(c.lastName);
     await form.locator(r.email).fill(c.email);
+    const mailConfirm = form.locator(r.emailConfirmation);
+    if (await mailConfirm.isVisible()) await mailConfirm.fill(c.email);
 
     const pw = form.locator(r.password);
-    if (!opts.guest && (await pw.isVisible())) await pw.fill(c.password);
+    if (!opts.guest && (await pw.isVisible())) {
+      await pw.fill(c.password);
+      const pwConfirm = form.locator(r.passwordConfirmation);
+      if (await pwConfirm.isVisible()) await pwConfirm.fill(c.password);
+    }
 
     await form.locator(r.street).fill(c.address.street);
-    await form.locator(r.zipcode).fill(c.address.zipcode);
-    await form.locator(r.city).fill(c.address.city);
+    // some themes render zipcode / city as selects (e.g. a fixed list of postal codes)
+    await this.setField(form.locator(r.zipcode).first(), c.address.zipcode);
+    await this.setField(form.locator(r.city).first(), c.address.city);
     await this.selectCountry(form.locator(r.country).first(), c.address.countryLabel);
+    const phone = form.locator(r.phone).first();
+    if (c.address.phoneNumber && (await phone.isVisible())) await phone.fill(c.address.phoneNumber);
 
     const dp = form.locator(r.dataProtection);
     if (await dp.count()) await dp.check({ force: true });
+  }
+
+  /** Fills an input, or picks a select option by value/label (no value = first non-empty option). */
+  private async setField(field: Locator, value?: string): Promise<void> {
+    if (!(await field.evaluate((el) => el.tagName === 'SELECT'))) return field.fill(value ?? '');
+    // disabled selects (e.g. a single preset option) are fixed by the shop — nothing to choose
+    if (await field.evaluate((el) => (el as HTMLSelectElement).disabled || el.getAttribute('aria-disabled') === 'true')) return;
+    const options = () =>
+      field.locator('option').evaluateAll((os) =>
+        os.map((o) => ({ value: (o as HTMLOptionElement).value, label: (o.textContent ?? '').trim() })),
+      );
+    // dependent selects are populated by JS after the previous field changed
+    await expect.poll(async () => (await options()).some((o) => o.value !== ''), { timeout: 5_000 }).toBe(true);
+    const all = await options();
+    const match = all.find((o) => value !== undefined && (o.value === value || o.label === value)) ?? (value === undefined ? all.find((o) => o.value !== '') : undefined);
+    if (!match) throw new Error(`No option "${value}" in select`);
+    await field.selectOption(match.value);
   }
 
   private async selectCountry(select: Locator, label?: string): Promise<void> {

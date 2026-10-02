@@ -27,6 +27,7 @@ const config: ProjectConfig = {
     languageSwitch: false,
     currencySwitch: false,
     mobileNavigation: true,
+    orderPlacement: true, // TODO: false if only redirect payments (PayPal, card …) exist
   },
 
   // Only change if the client uses custom routes / SEO URLs for these.
