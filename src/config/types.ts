@@ -33,6 +33,11 @@ export interface FeatureFlags {
    * false for B2B shops that show "log in to see prices" instead.
    */
   guestPrices?: boolean;
+  /**
+   * Analytics/marketing tracking must wait for cookie consent (default true).
+   * false where the shop's legal context doesn't require it → tracking-consent tests are skipped.
+   */
+  trackingConsent?: boolean;
 }
 
 export interface ProductRef {
@@ -116,6 +121,8 @@ export interface ProjectConfig {
      * Unset = customer is logged in and lands on routes.account.
      */
     registerPending?: string;
+    /** Password recovery form (default '/account/recover'). */
+    passwordRecovery?: string;
   };
 
   testData: {
@@ -150,6 +157,13 @@ export interface ProjectConfig {
     };
     /** Visible text of the footer link leading to the contact form. */
     contactLinkText: RegExp;
+    /** Footer link texts of mandatory legal pages (terms, privacy, withdrawal, imprint …). Unset = test skipped. */
+    legalLinks?: RegExp[];
+    /**
+     * Spellings that must find the same products as `searchTerm` (accents, umlauts …).
+     * Upper-case and space-padded variants are always checked.
+     */
+    searchTermVariants?: string[];
     /** Payment/shipping method labels to select in checkout; null = keep default. */
     paymentMethod: string | null;
     shippingMethod: string | null;
@@ -167,6 +181,9 @@ export interface ProjectConfig {
 
   /** Confirmed shop bugs → matching tests are expected to fail (see KnownIssue). */
   knownIssues?: KnownIssue[];
+
+  /** Tests that don't apply to this shop (intended behaviour, not a bug) → skipped with the reason. */
+  skipTests?: KnownIssue[];
 }
 
 /** Final config after env overrides + selector merge. */

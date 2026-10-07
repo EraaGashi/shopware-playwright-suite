@@ -1,4 +1,6 @@
 import { test, expect } from '../../src/fixtures';
+import { CookieBanner } from '../../src/components/CookieBanner';
+import type { Response } from '@playwright/test';
 
 test.describe('Cart', () => {
   test('add product from detail page opens off-canvas cart', { tag: ['@smoke', '@mobile'] }, async ({ product, offcanvasCart, header, cfg }) => {
@@ -15,6 +17,40 @@ test.describe('Cart', () => {
     // header widget refreshes asynchronously / on next page load → verify after reload
     await product.page.reload();
     await expect.poll(() => header.cartTotal()).toBeCloseTo(price, 2);
+  });
+
+  test('quantity field never puts 0, negative, fractional or too large amounts in the cart', async ({ page, context, cfg, product, cart }) => {
+    const p = cfg.testData.simpleProduct;
+    for (const value of ['0', '-1', '1.5', '99999']) {
+      await test.step(`quantity "${value}"`, async () => {
+        // fresh, empty cart for every value: new session, same cookie consent
+        await context.clearCookies();
+        await CookieBanner.preAccept(context, cfg.baseURL);
+        const serverErrors: string[] = [];
+        const onResponse = (r: Response) => { if (r.status() >= 500) serverErrors.push(`${r.status()} ${r.url()}`); };
+        page.on('response', onResponse);
+
+        await product.open(p);
+        const max = Number((await product.quantity.getAttribute('max')) || 100);
+        await product.quantity.fill(value);
+        await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined); // session settles (see addToCart)
+        await product.buyButton.click();
+        // the browser / shop may block the value entirely → no off-canvas, that's fine
+        await page.waitForResponse((r) => r.url().includes('/checkout/offcanvas'), { timeout: 8_000 }).catch(() => undefined);
+
+        await cart.open();
+        const line = cart.lineItem(p.name);
+        if (await line.count()) {
+          const raw = await line.locator(cfg.selectors.cart.quantityInput).first().inputValue();
+          const qty = Number(raw);
+          expect(Number.isInteger(qty), `quantity "${raw}" is not a whole number`).toBe(true);
+          expect(qty, 'quantity below 1').toBeGreaterThanOrEqual(1);
+          expect(qty, `quantity above the maximum (${max})`).toBeLessThanOrEqual(max);
+        }
+        page.off('response', onResponse);
+        expect(serverErrors, 'server errors while adding').toEqual([]);
+      });
+    }
   });
 
   test('add product from listing', async ({ listing, offcanvasCart, cfg }) => {

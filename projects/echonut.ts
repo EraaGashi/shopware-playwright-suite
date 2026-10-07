@@ -61,6 +61,7 @@ const config: ProjectConfig = {
 
     searchTerm: 'Lorem',
     searchMinResults: 10,
+    searchTermVariants: ['Lorém'],   // verified 2026-10-07: same 10 results as 'Lorem'
     searchNoResultTerm: 'zzqx-no-such-product-4711',
     expectedFilterTypes: ['manufacturer', 'properties', 'price'],   // confirmed: Manufacturer, Color, Sets, Size, Price
     expectedSortings: ['name-asc', 'name-desc', 'price-asc', 'price-desc', 'topseller'],  // topseller also present
@@ -82,10 +83,20 @@ const config: ProjectConfig = {
     },
 
     contactLinkText: /Kontakt|Contact/i,
+    // verified 2026-10-05 — all in the footer, all 200
+    legalLinks: [/Terms & Conditions/i, /Privacy Policy/i, /Right of Withdrawal/i, /Imprint/i],
     paymentMethod: null,             // ⚠ NO offline method exists — see note below
     shippingMethod: 'DPD',           // €0.00 for guests; DHL also available
     promotionCode: null,               // UI exists, no known test code
   },
+
+  // Not bugs for this shop (decided 2026-10-05): content is still placeholder while the shop is being built.
+  // Remove an entry once the real content is live so the check runs again.
+  skipTests: [
+    { test: 'mandatory legal pages are linked in the footer and load', reason: 'legal pages still contain placeholder text (intended for now)' },
+    { test: "social media links point to the shop's own profiles", reason: 'YouTube link is a placeholder until the channel exists (intended for now)' },
+    { test: 'delivery promise does not show dates in the past', reason: 'the "Hurry!" delivery block is static marketing text (intended for now)' },
+  ],
 
   redirects: [
     { from: '/account', to: '/account/login' },              // verified

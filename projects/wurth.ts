@@ -33,6 +33,7 @@ const config: ProjectConfig = {
     currencySwitch: false,
     mobileNavigation: true,
     orderPlacement: false,
+    trackingConsent: false,           // decided 2026-10-05: consent-before-tracking requirement not applied for this shop (Kosovo)
     guestPrices: false,               // CHANGED — guests see "Kyqu për të parë çmimin" instead of prices, tax, delivery info and cart totals
     // ^ orderPlacement: set to false per the policy below (checkout tests now stop at the confirm page and pass). TECHNICALLY true: all 3 payment methods (cash-on-delivery, prepayment,
     // invoice) are offline / non-redirect, so an automated end-to-end order
@@ -99,6 +100,7 @@ const config: ProjectConfig = {
 
     searchTerm: 'doreza',
     searchMinResults: 18,             // verified count of .product-action tiles for this term at last check
+    searchTermVariants: ['dorëza', 'Dorëza'],   // verified 2026-10-07: same 18 results as 'doreza'
     searchNoResultTerm: 'zzqx-no-such-product-4711',
     // UNVERIFIED — a filter-panel toggle exists (confirmed element present)
     // but the actual filter TYPES behind it were never opened/enumerated.
@@ -143,6 +145,8 @@ const config: ProjectConfig = {
     },
 
     contactLinkText: /Kontakti|Contact/i, // CHANGED — Albanian nav label is "Kontakti"
+    // verified 2026-10-05 — terms, privacy, legal info, returns, cookies, disclaimer (all in the footer, all 200)
+    legalLinks: [/Kushtet dhe Termat/i, /Privatësia/i, /Informacion ligjor/i, /Kthimi dhe zëvendësimi/i, /Cookies/i, /Mohim përgjegjësie/i],
     paymentMethod: 'Pagesë në dorëzim',   // verified real label — cash on delivery, the only method with no extra dependency
     shippingMethod: 'Transport',          // verified — the only reliably working shipping method (see BUG-001 note below)
     promotionCode: null,                  // only verified the rejection path (invalid code); no known valid/unlimited code
@@ -158,6 +162,11 @@ const config: ProjectConfig = {
   ],
 
   // Confirmed shop bugs (2026-09-25) — tests stay "expected to fail" until fixed, then remove the entry.
+  // Not bugs (decided/verified 2026-10-05) → skipped with the reason.
+  skipTests: [
+    { test: 'has a meta description', reason: 'staging product data has no meta description; production has one for the same product (verified 2026-10-05)' },
+  ],
+
   knownIssues: [
     {
       test: 'unknown URL shows a 404 page',

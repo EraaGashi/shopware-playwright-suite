@@ -44,7 +44,9 @@ test.describe('Homepage', () => {
     for (let i = 0; i < Math.min(count, 6); i++) {
       const img = imgs.nth(i);
       await img.scrollIntoViewIfNeeded();
-      await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+      // broken = finished loading without any pixels; an image that already has pixels may still be
+      // swapping to a sharper srcset candidate (complete=false) — that's fine
+      await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth > 0), { message: 'image is broken (no pixels)' }).toBe(true);
     }
   });
 });

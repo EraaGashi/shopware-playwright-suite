@@ -75,7 +75,7 @@ type TestFixtures = {
   loggedInPage: Page;
   /** Skips the test when ALLOW_WRITE_TESTS=false (production-safe runs). */
   requireWriteAccess: void;
-  /** Auto: marks tests listed in cfg.knownIssues as expected to fail. */
+  /** Auto: skips tests in cfg.skipTests, marks tests in cfg.knownIssues as expected to fail. */
   knownIssue: void;
 };
 
@@ -128,9 +128,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   knownIssue: [
     async ({ cfg }, use, testInfo) => {
-      const issue = cfg.knownIssues?.find((k) =>
-        typeof k.test === 'string' ? testInfo.title.includes(k.test) : k.test.test(testInfo.title),
-      );
+      const matches = (k: { test: string | RegExp }) =>
+        typeof k.test === 'string' ? testInfo.title.includes(k.test) : k.test.test(testInfo.title);
+      const notApplicable = cfg.skipTests?.find(matches);
+      if (notApplicable) testInfo.skip(true, `Not applicable for this shop: ${notApplicable.reason}`);
+      const issue = cfg.knownIssues?.find(matches);
       if (issue) testInfo.fail(true, `Known shop issue: ${issue.reason}`);
       await use();
     },

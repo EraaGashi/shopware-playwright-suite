@@ -55,7 +55,7 @@ export class AuthPage extends BasePage {
     await expect(firstName).toBeVisible();
   }
 
-  async fillRegistration(c: TestCustomer, opts: { guest?: boolean } = {}): Promise<void> {
+  async fillRegistration(c: TestCustomer, opts: { guest?: boolean; skipExtraFields?: boolean } = {}): Promise<void> {
     const r = this.s.register;
     const form = this.registerForm;
     await this.revealRegistration();
@@ -71,7 +71,7 @@ export class AuthPage extends BasePage {
     }
 
     // project-specific fields (B2B forms), in order — later selects may depend on earlier ones
-    for (const f of this.cfg.testData.customer.extraFields ?? []) {
+    for (const f of opts.skipExtraFields ? [] : this.cfg.testData.customer.extraFields ?? []) {
       const value = f.value?.replace('{random}', () => String(Math.floor(1e8 + Math.random() * 9e8)));
       await this.setField(form.locator(f.selector).first(), value);
     }

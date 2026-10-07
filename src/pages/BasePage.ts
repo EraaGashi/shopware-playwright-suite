@@ -23,9 +23,13 @@ export abstract class BasePage {
   /**
    * Waits for `load` so Shopware's JS plugins are bound — clicking earlier submits
    * forms natively (e.g. add-to-cart reloads the page instead of opening the off-canvas).
+   * Third-party requests (e.g. PayPal SDK / messaging) can hang and block `load` forever, so `load`
+   * gets a bounded wait: the shop's own (async) plugin chunks are long loaded by then.
    */
   async goto(path: string): Promise<Response | null> {
-    return this.page.goto(path, { waitUntil: 'load' });
+    const res = await this.page.goto(path, { waitUntil: 'domcontentloaded' });
+    await this.page.waitForLoadState('load', { timeout: 15_000 }).catch(() => undefined);
+    return res;
   }
 
   /** Clicks a link and waits for the next document's `load` (see `goto`). */

@@ -24,6 +24,12 @@ export const shopware67Selectors = {
     onlyNecessary: '.js-cookie-permission-button',
     acceptAll: '.js-cookie-accept-all-button',
     configure: '.js-cookie-configuration-button',
+    /** cookie configuration off-canvas ("Configure") */
+    configureItem: '.offcanvas.show input[type="checkbox"][data-cookie]:not([disabled])',
+    /** expands a cookie group in the dialog so its single cookies become visible */
+    configureGroupToggle: '.offcanvas.show .offcanvas-cookie-entries-toggle',
+    configureSubmit: '.offcanvas.show .js-offcanvas-cookie-submit',
+    configureAcceptAll: '.offcanvas.show .js-offcanvas-cookie-accept-all',
   },
   header: {
     root: 'header, .header-main',
@@ -46,6 +52,8 @@ export const shopware67Selectors = {
     wishlistBadge: '.header-wishlist-badge',
     mobileMenuToggle: '.nav-main-toggle-btn',
     languageSwitch: '.top-bar-language',
+    /** language change is a POST to /checkout/language (buttons, radios or a select named languageId) */
+    languageForm: 'form[action$="/checkout/language"]',
     currencySwitch: '.top-bar-currency',
   },
   navigation: {
@@ -68,6 +76,8 @@ export const shopware67Selectors = {
     listPrice: '.list-price',
     productImage: '.product-image-wrapper img',
     buyButton: '.btn-buy',
+    /** B2B shops (guestPrices=false): login link shown in the product box instead of the price */
+    guestPricePrompt: '.product-price-guest, .link-to-login',
     wishlistButton: '.product-wishlist-action',
     sorting: 'select.sorting',
     pagination: '.pagination',
@@ -115,6 +125,8 @@ export const shopware67Selectors = {
     delivery: '.product-detail-delivery-information, .delivery-information',
     tax: '.product-detail-tax',
     wishlistButton: '.product-wishlist-action, .product-wishlist-btn',
+    /** B2B shops (guestPrices=false): "log in to see prices" instead of the price */
+    guestPricePrompt: '.product-detail-price-guest',
     /** guests: off-canvas asking to accept the wishlist cookie before the first add */
     wishlistConsentAccept: '.offcanvas.show .js-wishlist-cookie-accept',
     crossSelling: '.product-cross-selling, .cms-element-cross-selling',
@@ -148,6 +160,11 @@ export const shopware67Selectors = {
     promotionSubmit: '.checkout-aside-add-promotion-button',
     empty: '.checkout .alert-info',
     itemCounter: '.cart-main-header-item-counter',
+  },
+  passwordRecovery: {
+    form: 'form[action$="/account/recover"]',
+    email: '[name="email[email]"]',
+    submit: 'button[type="submit"]',
   },
   login: {
     form: 'form.login-form',
@@ -223,6 +240,7 @@ export const shopware67Selectors = {
   },
   footer: {
     root: 'footer, .footer-main',
+    newsletterForm: 'form[action$="/form/newsletter"]',
     link: 'footer a',
     bottom: '.footer-bottom',
   },

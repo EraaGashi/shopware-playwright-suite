@@ -24,6 +24,35 @@ test.describe('Product search', () => {
     await expect(suggest.locator(cfg.selectors.header.searchSuggestProduct).first()).toBeVisible();
   });
 
+  test('search by product number finds the product (full and partial)', async ({ page, cfg, listing, product }) => {
+    const p = cfg.testData.simpleProduct;
+    // full number, then without the last 2 characters (e.g. variant suffix "SW10001.1" → "SW10001")
+    for (const term of [p.productNumber, p.productNumber.slice(0, -2)]) {
+      await test.step(`search "${term}"`, async () => {
+        await page.goto(`${cfg.routes.search}?search=${encodeURIComponent(term)}`, { waitUntil: 'load' });
+        // an exact hit may redirect straight to the product page
+        if (/\bis-ctl-product\b/.test((await page.locator('body').getAttribute('class')) ?? '')) {
+          await expect(product.name, `"${term}" opened another product`).toContainText(p.name, { ignoreCase: true });
+        } else {
+          await expect(listing.productBoxes.filter({ hasText: new RegExp(escapeRe(p.name), 'i') }).first(), `"${term}" did not find ${p.name}`).toBeVisible();
+        }
+      });
+    }
+  });
+
+  test('search ignores upper/lower case, extra spaces and accents', async ({ page, cfg, listing }) => {
+    const term = cfg.testData.searchTerm;
+    const count = async (q: string) => {
+      await page.goto(`${cfg.routes.search}?search=${encodeURIComponent(q)}`, { waitUntil: 'load' });
+      return listing.productBoxes.count();
+    };
+    const expected = await count(term);
+    expect(expected, `"${term}" finds nothing`).toBeGreaterThan(0);
+    for (const variant of [term.toUpperCase(), term.toLowerCase(), `  ${term}  `, ...(cfg.testData.searchTermVariants ?? [])]) {
+      expect.soft(await count(variant), `"${variant}" finds a different number of products than "${term}"`).toBe(expected);
+    }
+  });
+
   test('no-result search shows an info message', { tag: '@smoke' }, async ({ page, cfg, listing }) => {
     await page.goto(`${cfg.routes.search}?search=${encodeURIComponent(cfg.testData.searchNoResultTerm)}`);
     await expect(listing.productBoxes).toHaveCount(0);
@@ -36,3 +65,7 @@ test.describe('Product search', () => {
     await expect(page.locator('script:has-text("alert(1)")')).toHaveCount(0);
   });
 });
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

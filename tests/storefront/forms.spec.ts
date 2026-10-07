@@ -43,4 +43,19 @@ test.describe('Newsletter', () => {
     await page.goto(cfg.routes.home);
     await expect(page.locator('form[action*="newsletter"]').first()).toBeAttached();
   });
+
+  test('newsletter rejects an invalid e-mail address', async ({ page, cfg }) => {
+    skipUnless(cfg.features.newsletter, 'newsletter');
+    await page.goto(cfg.routes.home, { waitUntil: 'load' });
+    const form = page.locator(cfg.selectors.footer.newsletterForm).locator('visible=true').first();
+    await form.locator('input[type="email"], input[name="email"]').first().fill('invalid@');
+    await form.locator('button[type="submit"], button:not([type])').first().click();
+    // native (:invalid), Shopware JS validation (.is-invalid / feedback) or a server error must stop it
+    const s = cfg.selectors.page;
+    await expect(
+      form.locator(`input:invalid, ${s.invalidField}, ${s.invalidFeedback}`).locator('visible=true').first()
+        .or(page.locator(s.alertDanger).locator('visible=true').first()),
+    ).toBeVisible();
+    await expect(page.locator(s.alertSuccess).locator('visible=true')).toHaveCount(0);
+  });
 });

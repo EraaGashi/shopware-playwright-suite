@@ -33,6 +33,15 @@ test.describe('Customer registration', () => {
     void cfg;
   });
 
+  test('business (B2B) fields are required', async ({ page, cfg, auth, requireWriteAccess }) => {
+    void requireWriteAccess; // only creates an account if the shop's validation is broken
+    test.skip(!cfg.testData.customer.extraFields?.length, 'No project-specific registration fields');
+    await auth.fillRegistration(buildCustomer(cfg), { skipExtraFields: true });
+    await auth.submitRegistration();
+    await expect(auth.validationErrors.first()).toBeVisible();
+    await expect(page).toHaveURL(/\/account\/register(\?.*)?$/);
+  });
+
   test('invalid e-mail is rejected', async ({ cfg, auth }) => {
     await auth.fillRegistration(buildCustomer(cfg, { email: 'not-an-email' }));
     await auth.submitRegistration();
