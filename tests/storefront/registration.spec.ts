@@ -17,6 +17,10 @@ test.describe('Customer registration', () => {
       await expect(page).toHaveURL(new RegExp(cfg.routes.registerPending.replace(/[.]/g, '\\.')));
     } else if (cfg.features.doubleOptInRegistration) {
       await expect(page.locator(cfg.selectors.page.alertSuccess).first()).toBeVisible();
+    } else if (cfg.features.registrationNeedsFirstCheckout) {
+      // account stays pending until the first checkout → success message, customer not logged in
+      await expect(page.locator(cfg.selectors.page.alertSuccess).first()).toBeVisible();
+      await expect(page).not.toHaveURL(new RegExp(`${cfg.routes.account}(\\?.*)?$`));
     } else {
       await expect(page).toHaveURL(new RegExp(`${cfg.routes.account}(\\?.*)?$`));
       // account sidebar is collapsed on mobile → check it is rendered, not visible

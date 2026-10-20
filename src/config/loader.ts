@@ -45,6 +45,8 @@ export function loadConfig(): ResolvedConfig {
   const baseURL = (str(process.env.BASE_URL) ?? project.baseURL).replace(/\/+$/, '');
   const selectors = deepMerge<Selectors>(shopware67Selectors, project.selectors);
 
+  const testCustomerEmail = str(process.env.TEST_CUSTOMER_EMAIL);
+  const testCustomerPassword = str(process.env.TEST_CUSTOMER_PASSWORD);
   const httpUser = str(process.env.HTTP_USERNAME);
   const httpPass = str(process.env.HTTP_PASSWORD);
 
@@ -61,6 +63,8 @@ export function loadConfig(): ResolvedConfig {
         password: str(process.env.ADMIN_PASSWORD),
       },
       accessKey: str(process.env.SW_ACCESS_KEY),
+      testCustomer:
+        testCustomerEmail && testCustomerPassword ? { email: testCustomerEmail, password: testCustomerPassword } : undefined,
       allowWriteTests: bool(process.env.ALLOW_WRITE_TESTS, true),
       cleanupTestData: bool(process.env.CLEANUP_TEST_DATA, true),
     },

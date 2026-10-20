@@ -8,12 +8,14 @@ test.describe('Customer account', () => {
     expect(await account.asideItems.count()).toBeGreaterThanOrEqual(3);
   });
 
-  test('profile name can be changed', async ({ loggedInPage: page, account, cfg }) => {
+  test('profile name can be changed', async ({ loggedInPage: page, account, cfg, customer }) => {
     await account.openProfile();
     await account.updateName('Changed', 'Name');
     await expect(account.successAlert).toBeVisible();
     await page.reload();
     await expect(page.locator(cfg.selectors.account.profileFirstName)).toHaveValue('Changed');
+    // a fixed test account (TEST_CUSTOMER_EMAIL) is shared by every run → put its name back
+    if (cfg.env.testCustomer) await account.updateName(customer.firstName, customer.lastName);
   });
 
   test('addresses page lists the default address', async ({ loggedInPage: page, account, customer }) => {

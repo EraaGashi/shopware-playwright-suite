@@ -86,7 +86,7 @@ test('customer orders', async ({ loggedInPage, cartHelper, checkout, account, cf
 | `adminApi` / `storeApi` | worker | API clients, `null` if no credentials |
 | `header`, `navigation`, `listing`, `product`, `cart`, `offcanvasCart`, `auth`, `account`, `checkout`, `contact`, `cookieBanner` | test | page objects |
 | `cartHelper` | test | put products into the storefront cart without UI clicks |
-| `customer` | test | freshly registered customer (auto-deleted afterwards) |
+| `customer` | test | freshly registered customer (auto-deleted afterwards), or the fixed account from `TEST_CUSTOMER_EMAIL` / `TEST_CUSTOMER_PASSWORD` |
 | `loggedInPage` | test | `page` logged in as `customer` |
 | `acceptCookies` | option | `test.use({ acceptCookies: false })` to see the cookie banner |
 | `requireWriteAccess` | test | skip test when `ALLOW_WRITE_TESTS=false` |

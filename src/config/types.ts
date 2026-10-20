@@ -13,6 +13,12 @@ export interface FeatureFlags {
   registration: boolean;
   /** Registration requires e-mail confirmation (double opt-in). */
   doubleOptInRegistration: boolean;
+  /**
+   * New accounts stay pending until their first checkout: registration only shows a success message
+   * and the customer cannot log in yet. Login/account tests then need a fixed, active account
+   * (TEST_CUSTOMER_EMAIL / TEST_CUSTOMER_PASSWORD) — without one they are skipped.
+   */
+  registrationNeedsFirstCheckout?: boolean;
   productReviews: boolean;
   contactForm: boolean;
   newsletter: boolean;
@@ -65,6 +71,8 @@ export interface CustomerAddress {
   countryLabel?: string;
   /** Only needed when the shop requires a phone number (Store API + registration form). */
   phoneNumber?: string;
+  /** Visible state / region name, for shops that require one (e.g. US: "New York"). */
+  state?: string;
 }
 
 /**
@@ -184,6 +192,84 @@ export interface ProjectConfig {
 
   /** Tests that don't apply to this shop (intended behaviour, not a bug) → skipped with the reason. */
   skipTests?: KnownIssue[];
+
+  /** Data for the configurable client tests in tests/client/ (each section unset = its tests skip). */
+  client?: ClientTestConfig;
+}
+
+/** A storefront page checked by the client tests. */
+export interface ClientPage {
+  /** Shown in the test title — use it to target knownIssues / skipTests. */
+  name: string;
+  path: string;
+}
+
+export interface ClientTestConfig {
+  /** Category / CMS landing pages: load with header, footer and CMS content. */
+  landingPages?: Array<ClientPage & {
+    /** Minimum number of product boxes (0 / unset = page has no product listing). */
+    minProducts?: number;
+    /** Expected <h1> text (case insensitive substring). */
+    heading?: string;
+  }>;
+
+  seo?: {
+    /** Pages that must have title, single <h1>, canonical and Open Graph title. */
+    pages: ClientPage[];
+    /** Also require a meta description (>= 20 chars) on these pages (default true). */
+    requireMetaDescription?: boolean;
+    /** Pages must be indexable — set false for staging shops that are noindex on purpose (default true). */
+    indexable?: boolean;
+    /** Paths that must always be noindex (account, cart, checkout …). */
+    noindexPaths?: string[];
+  };
+
+  /** Header links that must be visible for guests and point to the given target. */
+  headerLinks?: Array<{ name: string; selector: string; href: string | RegExp }>;
+
+  /** Footer links (visible text) that must exist and load without error. */
+  footerLinks?: Array<{ name: string; text: RegExp }>;
+
+  /** Pages whose title, headings and meta texts must not show HTML entities or broken umlauts/quotes. */
+  encodingPages?: ClientPage[];
+
+  /** Pages without uncaught JS errors, failed own-host requests (>= 400) or broken images. */
+  healthPages?: ClientPage[];
+  /** Requests ignored by the health check (third-party noise, known 404 trackers …). */
+  healthIgnoreRequests?: RegExp[];
+
+  /** Pages checked at each viewport: no horizontal scrolling, logo and cart reachable. */
+  responsive?: {
+    pages: ClientPage[];
+    /** Default: mobile 390×844, tablet 768×1024, desktop 1440×900. */
+    viewports?: Array<{ name: string; width: number; height: number }>;
+  };
+
+  /** Search terms with expected results (relevance checks beyond testData.searchTerm). */
+  searchCases?: Array<{
+    term: string;
+    /** Minimum number of results (default 1; 0 = must find nothing). */
+    minResults?: number;
+    /** Product name (substring, case insensitive) that must be among the results. */
+    expectProduct?: string;
+  }>;
+
+  /** Product pages whose gallery must show at least `minImages` loaded images with alt texts. */
+  productGallery?: {
+    pages: ClientPage[];
+    minImages?: number;
+    /** Default: cfg.selectors.product.galleryImage */
+    imageSelector?: string;
+  };
+
+  /** Shop-specific elements (banners, widgets, badges …) that must be on a page. */
+  contentChecks?: Array<ClientPage & {
+    selector: string;
+    /** Text (substring, case insensitive) the first match must contain. */
+    text?: string;
+    /** Minimum number of matches (default 1). */
+    minCount?: number;
+  }>;
 }
 
 /** Final config after env overrides + selector merge. */
@@ -198,6 +284,8 @@ export interface ResolvedConfig extends Omit<ProjectConfig, 'selectors'> {
       password?: string;
     };
     accessKey?: string;
+    /** Existing, active customer to log in with instead of registering a new one per test. */
+    testCustomer?: { email: string; password: string };
     allowWriteTests: boolean;
     cleanupTestData: boolean;
   };

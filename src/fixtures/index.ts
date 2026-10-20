@@ -144,8 +144,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use();
   },
 
-  customer: async ({ cfg, storeApi, adminApi, browser, requireWriteAccess }, use) => {
-    void requireWriteAccess;
+  customer: async ({ cfg, storeApi, adminApi, browser }, use) => {
+    // fixed, already active account (TEST_CUSTOMER_EMAIL / _PASSWORD): nothing is created or deleted
+    const fixed = cfg.env.testCustomer;
+    if (fixed) return use(buildCustomer(cfg, fixed));
+    test.skip(!cfg.env.allowWriteTests, 'Write tests disabled (ALLOW_WRITE_TESTS=false)');
+    test.skip(
+      !!cfg.features.registrationNeedsFirstCheckout,
+      'New accounts stay pending until their first checkout — set TEST_CUSTOMER_EMAIL / TEST_CUSTOMER_PASSWORD',
+    );
     const customer = buildCustomer(cfg);
 
     if (storeApi) {

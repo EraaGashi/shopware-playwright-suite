@@ -42,12 +42,25 @@ export class ProductPage extends BasePage {
   }
 
   async addToCart(qty?: number): Promise<void> {
-    if (qty) await this.setQuantity(qty);
+    // themes without a quantity field add 1 per click → click qty times
+    const hasQuantityField = (await this.quantity.count()) > 0;
+    if (qty && hasQuantityField) await this.setQuantity(qty);
+    const clicks = hasQuantityField ? 1 : (qty ?? 1);
     // On a cached page a new visitor has no session yet; the page's background requests create one.
     // Clicking before they finish can add the product to a session that is replaced a moment later
     // (cart then shows empty). Real visitors never click that fast → let them settle first.
     await this.page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined);
-    await this.waitForXhr('/checkout/offcanvas', () => this.buyButton.click());
+    for (let i = 0; i < clicks; i++) {
+      // the off-canvas cart from the previous click covers the buy button
+      if (i > 0) await this.closeOffcanvasCart();
+      await this.waitForXhr('/checkout/offcanvas', () => this.buyButton.click());
+    }
+  }
+
+  private async closeOffcanvasCart(): Promise<void> {
+    const oc = this.$(this.s.offcanvasCart.root).first();
+    await oc.locator(this.s.offcanvasCart.close).first().click();
+    await expect(oc).toBeHidden();
   }
 
   /**
@@ -57,6 +70,9 @@ export class ProductPage extends BasePage {
   async switchVariant(groupIndex: number): Promise<{ before: string; after: string }> {
     const before = await this.productNumberValue();
     const group = this.configuratorGroups.nth(groupIndex);
+    // some themes render each group as a <select> instead of radio buttons
+    const select = group.locator('select');
+    if (await select.count()) return this.switchVariantBySelect(select.first(), before);
     const options = group.locator(this.s.product.configuratorOptionInput);
     const count = await options.count();
     // some themes drop the is-combinable marker → then treat every enabled option as combinable
@@ -75,6 +91,21 @@ export class ProductPage extends BasePage {
       return { before, after: await this.productNumberValue() };
     }
     throw new Error('No alternative combinable variant option found');
+  }
+
+  /** Shopware marks not combinable <option>s with a title ("This option is currently unavailable."). */
+  private async switchVariantBySelect(select: Locator, before: string): Promise<{ before: string; after: string }> {
+    const values = await select.locator('option').evaluateAll((os) =>
+      (os as HTMLOptionElement[]).filter((o) => !o.selected && !o.disabled).map((o) => ({ value: o.value, combinable: !o.title })),
+    );
+    const target = values.find((o) => o.combinable) ?? values[0];
+    if (!target) throw new Error('No alternative variant option found');
+    await Promise.all([
+      this.page.waitForURL((u) => !u.pathname.endsWith(before), { timeout: 15_000 }),
+      select.selectOption(target.value),
+    ]);
+    await expect(this.productNumber).not.toContainText(before);
+    return { before, after: await this.productNumberValue() };
   }
 
   get wishlistButton(): Locator {

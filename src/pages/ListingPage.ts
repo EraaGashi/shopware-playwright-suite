@@ -131,7 +131,9 @@ export class ListingPage extends BasePage {
   async addToCartFromListing(index = 0): Promise<string> {
     const box = this.productBoxes.nth(index);
     const name = (await box.locator(this.s.listing.productName).innerText()).trim();
-    await this.waitForXhr('/checkout/offcanvas', () => box.locator(this.s.listing.buyButton).click());
+    // some themes only reveal the box actions on hover (clipped, but "visible" to Playwright before)
+    await box.hover();
+    await this.waitForXhr('/checkout/offcanvas', () => this.buyButtonOf(box).click());
     return name;
   }
 
@@ -139,8 +141,13 @@ export class ListingPage extends BasePage {
   async firstBuyableIndex(): Promise<number> {
     const count = await this.productBoxes.count();
     for (let i = 0; i < count; i++) {
-      if (await this.productBoxes.nth(i).locator(this.s.listing.buyButton).isVisible()) return i;
+      if (await this.buyButtonOf(this.productBoxes.nth(i)).isVisible()) return i;
     }
     return -1;
+  }
+
+  /** Themes may render the buy button twice per box (desktop overlay + mobile bar) → the visible copy. */
+  private buyButtonOf(box: Locator): Locator {
+    return box.locator(this.s.listing.buyButton).locator('visible=true').first();
   }
 }

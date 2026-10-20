@@ -92,11 +92,19 @@ export class AuthPage extends BasePage {
       if (await pwConfirm.isVisible()) await pwConfirm.fill(c.password);
     }
 
-    await form.locator(r.street).fill(c.address.street);
-    // some themes render zipcode / city as selects (e.g. a fixed list of postal codes)
-    await this.setField(form.locator(r.zipcode).first(), c.address.zipcode);
-    await this.setField(form.locator(r.city).first(), c.address.city);
-    await this.selectCountry(form.locator(r.country).first(), c.address.countryLabel);
+    // some themes ask for the address only in checkout, not on the account registration form.
+    // count(), not isVisible(): the field may still be fading in with the "new customer" tab
+    const street = form.locator(r.street).first();
+    if (await street.count()) {
+      await street.fill(c.address.street);
+      // some themes render zipcode / city as selects (e.g. a fixed list of postal codes)
+      await this.setField(form.locator(r.zipcode).first(), c.address.zipcode);
+      await this.setField(form.locator(r.city).first(), c.address.city);
+      await this.selectCountry(form.locator(r.country).first(), c.address.countryLabel);
+      // states are loaded for the selected country → setField waits for the options
+      const state = form.locator(r.countryState).first();
+      if (c.address.state && (await state.isVisible())) await this.setField(state, c.address.state);
+    }
     const phone = form.locator(r.phone).first();
     if (c.address.phoneNumber && (await phone.isVisible())) await phone.fill(c.address.phoneNumber);
 
