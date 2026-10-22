@@ -35,6 +35,24 @@ export class AccountPage extends BasePage {
     await this.expectPath(this.cfg.routes.accountOrders);
   }
 
+  /** Submits the change-password form of the profile page. */
+  async changePassword(current: string, next: string): Promise<void> {
+    await this.goto(this.cfg.routes.accountProfile);
+    const form = this.$(this.s.account.passwordForm).first();
+    // the form may sit in a collapsed section → fill via the fields, submit via the form's button
+    await form.locator(this.s.account.passwordNew).fill(next);
+    await form.locator(this.s.account.passwordNewConfirm).fill(next);
+    await form.locator(this.s.account.passwordCurrent).fill(current);
+    await Promise.all([this.page.waitForLoadState('domcontentloaded'), form.locator('button[type="submit"]').first().click()]);
+  }
+
+  async openAddressCreate(): Promise<Locator> {
+    await this.goto(`${this.cfg.routes.accountAddresses}/create`);
+    const form = this.$(this.s.account.addressForm).first();
+    await expect(form).toBeVisible();
+    return form;
+  }
+
   get orders(): Locator {
     return this.$(this.s.account.orderItem);
   }

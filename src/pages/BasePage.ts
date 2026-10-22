@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, type Response } from '@playwright/test';
 import type { ResolvedConfig } from '../config/types';
 import type { Selectors } from '../selectors/shopware67';
+import { parsePrice } from '../utils/price';
 
 /**
  * Base for all page objects: config + selectors + common Shopware helpers.
@@ -35,6 +36,23 @@ export abstract class BasePage {
   /** Clicks a link and waits for the next document's `load` (see `goto`). */
   async clickAndLoad(target: Locator): Promise<void> {
     await Promise.all([this.page.waitForEvent('load'), target.click()]);
+  }
+
+  /**
+   * Line items as sorted "label = total" strings, so cart and confirm page can be compared
+   * regardless of their layout (same products, same line totals).
+   */
+  protected async lineSummaryOf(items: Locator): Promise<string[]> {
+    const rows = await items.evaluateAll(
+      (els, sel) =>
+        els.map((el) => ({
+          // some themes prefix the quantity on the confirm page ("2x Product")
+          label: (el.querySelector(sel.label)?.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/^\d+\s*[x×]\s+/i, ''),
+          total: el.querySelector(sel.total)?.textContent ?? '',
+        })),
+      { label: this.s.cart.lineItemLabel, total: this.s.cart.lineItemTotal },
+    );
+    return rows.map((r) => `${r.label} = ${parsePrice(r.total).toFixed(2)}`).sort();
   }
 
   /** Shopware sets body classes like "is-ctl-checkout is-act-cartpage". */

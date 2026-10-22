@@ -1,4 +1,5 @@
 import { test, expect, skipUnless } from '../../src/fixtures';
+import { ProductPage } from '../../src/pages/ProductPage';
 
 test.describe('Product detail page', () => {
   test('shows core product information', { tag: ['@smoke', '@mobile'] }, async ({ product, cfg }) => {
@@ -86,6 +87,72 @@ test.describe('Product detail page', () => {
     await expect(page).not.toHaveURL(urlBefore);
     // SEO URLs end in the product number; canonical /detail/{id} URLs (no SEO URL) don't
     if (urlBefore.includes(before)) await expect(page).toHaveURL(new RegExp(after.replace(/[.]/g, '\\.')));
+  });
+
+  test('switching one variant option keeps the other options', async ({ product, cfg }) => {
+    // risk: selecting e.g. a size resets the chosen colour → customer buys a variant they did not pick
+    await product.open(cfg.testData.variantProduct);
+    const groups = await product.configuratorGroups.count();
+    test.skip(groups < 2, 'Variant product has only one option group');
+    const before = await product.selectedOptions();
+    const changed = groups - 1;
+    await product.switchVariant(changed);
+    const after = await product.selectedOptions();
+    expect(after[changed], 'switched option did not change').not.toBe(before[changed]);
+    for (let i = 0; i < groups; i++) {
+      if (i !== changed) expect(after[i], `option group ${i + 1} changed although only group ${changed + 1} was switched`).toBe(before[i]);
+    }
+  });
+
+  test('structured data matches the visible product', async ({ product, cfg }) => {
+    // risk: search engines / price comparison show another name, price or currency than the shop
+    const p = cfg.testData.simpleProduct;
+    await product.open(p);
+    const data = await product.structuredData();
+    test.skip(data.source === 'none', 'No Product structured data (JSON-LD or microdata) on the page');
+    const name = (await product.name.innerText()).trim();
+    expect.soft(data.name ?? '', `structured name (${data.source}) vs <h1> "${name}"`).toContain(name);
+    if (cfg.features.guestPrices !== false) {
+      expect.soft(data.price, `structured price (${data.source}) vs visible price`).toBeCloseTo(await product.priceValue(), 2);
+      const iso = ({ '€': 'EUR', $: 'USD', '£': 'GBP', 'CHF': 'CHF', 'zł': 'PLN', 'kr': 'SEK' } as Record<string, string>)[cfg.currencySymbol];
+      if (iso) expect.soft(data.currency, `structured currency vs shop currency ${cfg.currencySymbol}`).toBe(iso);
+    }
+    expect.soft(data.availability ?? '', 'availability missing or not a schema.org value').toMatch(/schema\.org\/(InStock|OutOfStock|PreOrder|LimitedAvailability|BackOrder|Discontinued|InStoreOnly|OnlineOnly|SoldOut)/);
+  });
+
+  test('canonical, og:url and structured data URL agree', async ({ page, product, cfg }) => {
+    // risk: shares / search results point to another product, host or protocol than the page itself
+    await product.open(cfg.testData.simpleProduct);
+    const canonical = (await page.locator('link[rel="canonical"]').first().getAttribute('href')) ?? '';
+    expect(canonical, 'no canonical link').not.toBe('');
+    const c = new URL(canonical);
+    const here = new URL(page.url());
+    expect.soft(`${c.protocol}//${c.host}`, 'canonical host/protocol differs from the shop').toBe(new URL(cfg.baseURL).origin);
+    expect.soft(c.pathname, 'canonical points to another page').toBe(here.pathname);
+    const og = await page.locator('meta[property="og:url"]').first().getAttribute('content').catch(() => null);
+    if (og) expect.soft(new URL(og).href, 'og:url differs from canonical').toBe(c.href);
+    const data = await product.structuredData();
+    if (data.url) expect.soft(new URL(data.url).href, `structured data URL (${data.source}) differs from canonical`).toBe(c.href);
+  });
+
+  test('a variant URL keeps its selected options after reload and when opened directly', async ({ page, product, browser, cfg }) => {
+    // risk: deep links / reloads open the default variant instead of the chosen one
+    await product.open(cfg.testData.variantProduct);
+    test.skip((await product.configuratorGroups.count()) === 0, 'Variant product has no configurator');
+    await product.switchVariant((await product.configuratorGroups.count()) - 1);
+    const chosen = await product.selectedOptions();
+    const url = page.url();
+    await page.reload();
+    expect(await product.selectedOptions(), 'options changed after reload').toEqual(chosen);
+    const ctx = await browser.newContext({ baseURL: cfg.baseURL, httpCredentials: cfg.env.httpCredentials, storageState: await page.context().storageState() });
+    try {
+      const fresh = await ctx.newPage();
+      const freshProduct = new ProductPage(fresh, cfg);
+      await freshProduct.open(url);
+      expect(await freshProduct.selectedOptions(), 'variant URL opened directly selects other options').toEqual(chosen);
+    } finally {
+      await ctx.close();
+    }
   });
 
   test('breadcrumb links back to the category', async ({ product, cfg, page }) => {

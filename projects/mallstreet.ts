@@ -124,8 +124,6 @@ const config: ProjectConfig = {
   knownIssues: [
     { test: 'shows core product information', reason: 'PDP shows no product number and no tax notice (price "$98.00" without any tax hint); name, price, buy button, gallery and description are fine' },
     { test: 'mandatory legal pages are linked in the footer and load', reason: 'Terms & Conditions, Privacy policy and Returns & refund load but have only 13–15 words of content' },
-    { test: 'SEO basics on "Home page"', reason: 'no meta description (empty content attribute)' },
-    { test: 'SEO basics on "Women\'s CLP"', reason: 'no meta description (empty content attribute)' },
     { test: 'Product with "&" in its name', reason: 'name is double-escaped: title and h1 show "Little Kid &amp; Big Kid"' },
     { test: 'search by product number finds the product (full and partial)', reason: 'full product number is found, a partial one ("PTE70393") returns no results' },
   ],
@@ -249,6 +247,10 @@ const config: ProjectConfig = {
       // "Add filters" opens the filter off-canvas on every viewport; the inline .filter-panel is just the bar
       filterPanel: '.offcanvas.show .filter-panel',
     },
+    checkout: {
+      // stepped one-page checkout: payment methods sit in a collapsed "Payment" step (verified on dev 2026-10-21)
+      paymentReveal: '[data-themallstreet-opc-open-step="payment"]',
+    },
     account: {
       // no sidebar: /account is one dashboard of cards (Profile, Wishlist, Messages, Address Book,
       // Moodboards, Order history) — verified on dev 2026-10-20
@@ -257,9 +259,8 @@ const config: ProjectConfig = {
     },
     product: {
       name: 'h1.product-header__name',
-      // no product number on the PDP — the page title ends with it ("Breeze Tutu Skirt (Baby) | Soft Pink | 1 | PTE7039301").
-      // Read via innerText (variant switch works); toContainText sees <title> as empty → see knownIssues
-      productNumber: 'head > title',
+      // productNumber: NOT overridden — the PDP shows no product number (since 2026-10-21 not even in the
+      // page title). ProductPage then reads it from the canonical SEO URL (/Cloud-Tulle-Dress-Set-Baby/CBS8018031).
       // tax: NOT overridden — the PDP shows no tax notice at all (see knownIssues)
       wishlistButton: '.product-header__actions .product-wishlist-action',
       galleryImage: '.themallstreet-product-gallery img, .gallery-slider-image',

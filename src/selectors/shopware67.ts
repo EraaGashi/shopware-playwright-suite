@@ -10,6 +10,8 @@ export const shopware67Selectors = {
   page: {
     /** <body> class prefixes Shopware sets per controller/action */
     body: 'body',
+    /** "skip to main content" link, first focusable element of every page */
+    skipLink: 'a[href="#content-main"]',
     main: 'main.content-main, main',
     breadcrumb: '.breadcrumb',
     alertSuccess: '.alert-success',
@@ -153,7 +155,13 @@ export const shopware67Selectors = {
     minus: '.line-item-quantity .js-btn-minus',
     remove: '.line-item-remove-button',
     lineItemTotal: '.line-item-total-price-value',
+    /** not every theme shows a unit price (then cart checks fall back to proportional totals) */
+    lineItemUnitPrice: '.line-item-unit-price-value',
     summaryTotal: 'dd.checkout-aside-summary-total',
+    /** net amount and tax rows of the summary (label holds the rate, e.g. "plus 19% VAT") */
+    summaryNet: 'dd.summary-net',
+    summaryTax: 'dd.summary-tax',
+    summaryTaxLabel: 'dt.summary-tax',
     summaryList: '.checkout-aside-summary-list',
     checkoutButton: '.checkout-aside-action .begin-checkout-btn, a.begin-checkout-btn',
     promotionInput: 'form.cart-add-promotion input[name="code"]',
@@ -209,7 +217,14 @@ export const shopware67Selectors = {
     addressCard: '.address-card, .address-box',
     addAddressButton: 'a[href*="/account/address/create"]',
     orderItem: '.order-table, .order-wrapper, .account-order-overview .order-item',
+    /** expands an order's details (line items, totals) in the order history */
+    orderDetailsToggle: '.order-hide-btn',
     logout: 'a[href$="/account/logout"]',
+    passwordForm: '#profilePasswordForm',
+    passwordCurrent: '[name="password[password]"]',
+    passwordNew: '[name="password[newPassword]"]',
+    passwordNewConfirm: '[name="password[newPasswordConfirm]"]',
+    addressForm: 'form[action*="/account/address/create"]',
   },
   checkout: {
     confirmForm: '#confirmOrderForm',
@@ -218,6 +233,8 @@ export const shopware67Selectors = {
     /** payment plugins that replace the submit button with their own (SwagPayPal smart buttons) */
     paymentButtons: '[data-swag-paypal-smart-payment-buttons]',
     paymentMethod: '.payment-method-input',
+    /** stepped / collapsed checkout themes: control that shows the payment methods ('' = always visible) */
+    paymentReveal: '',
     paymentMethodLabel: '.payment-method-label',
     shippingMethod: '.shipping-method-input',
     shippingMethodLabel: '.shipping-method-label',

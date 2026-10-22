@@ -195,6 +195,20 @@ export interface ProjectConfig {
 
   /** Data for the configurable client tests in tests/client/ (each section unset = its tests skip). */
   client?: ClientTestConfig;
+
+  /** Sample size of the catalog crawler (tests/storefront/catalog-crawl.spec.ts); defaults when unset. */
+  crawl?: CrawlConfig;
+}
+
+export interface CrawlConfig {
+  /** Category pages taken from the main navigation (default 12). */
+  maxCategories?: number;
+  /** Products opened per category (default 2). */
+  productsPerCategory?: number;
+  /** Upper limit of product pages in total (default 20). */
+  maxProducts?: number;
+  /** Navigation links to leave out (e.g. CMS-only pages, blogs). */
+  excludePaths?: RegExp[];
 }
 
 /** A storefront page checked by the client tests. */

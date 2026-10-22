@@ -41,6 +41,18 @@ export class ListingPage extends BasePage {
     return texts.map(parsePrice).filter((n) => !Number.isNaN(n));
   }
 
+  /** Detail page links of the boxes (unique per product/variant, unlike names). */
+  async productHrefs(): Promise<string[]> {
+    return this.productBoxes.locator(this.s.listing.productName).evaluateAll((els) =>
+      els.map((el) => (el.closest('a') ?? el.querySelector('a') ?? el).getAttribute('href') ?? ''),
+    );
+  }
+
+  /** Raw price texts of the boxes (for format checks). */
+  async productPriceTexts(): Promise<string[]> {
+    return (await this.productBoxes.locator(this.s.listing.productPrice).allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+  }
+
   async sortingOptions(): Promise<string[]> {
     return this.sorting.locator('option').evaluateAll((o) => o.map((x) => (x as HTMLOptionElement).value));
   }
@@ -112,6 +124,12 @@ export class ListingPage extends BasePage {
 
   get activeFilters(): Locator {
     return this.$(`${this.s.listing.activeFilterContainer} ${this.s.listing.activeFilter}`);
+  }
+
+  /** Removes one active filter via its chip. */
+  async removeActiveFilter(index = 0): Promise<void> {
+    await this.closeFilterDropdowns();
+    await this.reloadListing(() => this.activeFilters.locator('visible=true').nth(index).click());
   }
 
   async resetAllFilters(): Promise<void> {

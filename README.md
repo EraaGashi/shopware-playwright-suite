@@ -25,6 +25,8 @@ npx playwright test --grep @mobile --project=mobile
 EXTRA_BROWSERS=firefox,webkit npm test
 ALLOW_WRITE_TESTS=false npm test   # production-safe: no customers, orders or form submissions
 npm run test:ui                    # Playwright UI mode for debugging
+npm run test:crawl                 # catalog crawler only (leave it out elsewhere: --grep-invert @crawl)
+npm run test:security              # passive security checks only
 ```
 
 ---
@@ -86,7 +88,7 @@ test('customer orders', async ({ loggedInPage, cartHelper, checkout, account, cf
 | `adminApi` / `storeApi` | worker | API clients, `null` if no credentials |
 | `header`, `navigation`, `listing`, `product`, `cart`, `offcanvasCart`, `auth`, `account`, `checkout`, `contact`, `cookieBanner` | test | page objects |
 | `cartHelper` | test | put products into the storefront cart without UI clicks |
-| `customer` | test | freshly registered customer (auto-deleted afterwards), or the fixed account from `TEST_CUSTOMER_EMAIL` / `TEST_CUSTOMER_PASSWORD` |
+| `customer` | test | freshly registered customer (auto-deleted afterwards), or the fixed account from `TEST_CUSTOMER_EMAIL` / `TEST_CUSTOMER_PASSWORD` (shared cart → logged-in tests that change the cart can interfere when run in parallel; use `--workers=1` for exact runs) |
 | `loggedInPage` | test | `page` logged in as `customer` |
 | `acceptCookies` | option | `test.use({ acceptCookies: false })` to see the cookie banner |
 | `requireWriteAccess` | test | skip test when `ALLOW_WRITE_TESTS=false` |
@@ -109,17 +111,22 @@ test('customer orders', async ({ loggedInPage, cartHelper, checkout, account, cf
 | `homepage` | header/nav/content/footer, SEO basics, logo link, JS errors, images |
 | `cookie-consent` | banner shown, "only necessary", remembered |
 | `navigation` | configured categories, every category opens, flyout, breadcrumb |
-| `listing` | product boxes, PDP link, pagination, sorting (price/name), filters (manufacturer, property, price, reset) |
-| `product-detail` | core info, canonical/structured data, variant switch, breadcrumb, reviews, 404 product |
-| `search` | header search, relevance, suggest, no result, XSS-safe input |
-| `cart` | add from PDP/listing, quantity (off-canvas + cart page), remove, persistence, promotion codes |
-| `checkout` | empty cart guard, login/register gate, guest order, customer order → account, TOS required, payment/shipping methods |
+| `listing` | product boxes, PDP link, pagination, sorting (price/name, order kept on page 2), filters (manufacturer, property, price min+max, reset, sorting kept, kept on page 2, browser back), deep page numbers, contradictory price params |
+| `product-detail` | core info, canonical/structured data, variant switch (other options kept), breadcrumb, reviews, 404 product |
+| `search` | header search, relevance, suggest, no result, XSS-safe input, empty/blank/overlong terms, sorting keeps the term, deep page numbers |
+| `cart` | add from PDP/listing, quantity (off-canvas + cart page), PDP price = cart price × quantity, same product twice = one line, remove (other lines kept), emptied cart blocks checkout, persistence, promotion codes |
+| `checkout` | empty cart guard, login/register gate, guest order, customer order → account, TOS required, payment/shipping methods, cart = confirm page (items, totals), cart changes reach confirm, payment choice kept after reload / shipping change |
 | `registration` | register, empty-form validation, invalid email, short password, duplicate email |
-| `login` | login/logout, wrong password, unknown user, header menu, cart kept after login |
-| `account` | overview, profile update, addresses, orders, login protection |
+| `login` | login/logout, wrong password, unknown user, upper-case e-mail, back button after logout, header menu, cart kept after login |
+| `account` | overview, profile update, addresses, orders (number + amount), wrong current password rejected, empty address form rejected, login protection |
 | `wishlist` | guest add, wishlist page + remove, persistence (feature-flagged) |
 | `forms` | contact form validation + submit, newsletter (feature-flagged) |
 | `mobile` | off-canvas nav, burger visibility, no horizontal overflow, off-canvas filters |
+| `accessibility` | page language vs. locale, image alt attributes, accessible names of header controls and login/register fields, skip link as first tab stop |
+| `pricing` | cart summary adds up (grand total = net + taxes), each tax = net × rate from its label, quantity 7 without rounding drift (selectors `cart.summaryNet` / `summaryTax` / `summaryTaxLabel` for other themes) |
+| `cart-merge` | guest cart + saved account cart merged at login (nothing lost or duplicated), account cart not visible after logout, cart follows the customer to a new browser session — snapshots and restores the test account's cart |
+| `catalog-crawl` (`@crawl`) | samples categories from the navigation and their products (size: `crawl` in the profile): broken pages, empty category listings, products priced 0, without image or description, in stock but not buyable |
+| `security` | security headers, session cookie flags, no open redirect after login, HTTP → HTTPS, no debug output / profiler, no exposed files (`.env`, `.git` …), no directory listings, Admin API needs a token. Bot-protection answers count as *inconclusive* (skipped) |
 | `links-and-errors` | important links, configured redirects, broken header/footer links, sitemap/robots, 404 page, bad params, bad POST |
 
 ---

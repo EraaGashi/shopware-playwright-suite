@@ -98,6 +98,73 @@ test.describe('Cart', () => {
     await cart.expectEmpty();
   });
 
+  test('price is carried over unchanged from detail page to cart and scales with quantity', async ({ product, offcanvasCart, cart, cfg }) => {
+    // risk: cart shows another price than the product page, or line totals don't follow the quantity
+    test.skip(cfg.features.guestPrices === false, 'Guests see no prices');
+    const p = cfg.testData.simpleProduct;
+    await product.open(p);
+    const pdpPrice = await product.priceValue();
+    await product.addToCart();
+    await expect(offcanvasCart.lineItem(p.name)).toBeVisible();
+
+    await cart.open();
+    expect(await cart.quantityOf(p.name)).toBe(1);
+    expect(await cart.lineTotalOf(p.name), 'cart line total vs. detail page price').toBeCloseTo(pdpPrice, 2);
+
+    await cart.setQuantity(p.name, 2);
+    expect(await cart.quantityOf(p.name)).toBe(2);
+    // unit price shown → exact check (also correct for tier prices); otherwise the line must double
+    const unit = await cart.unitPriceOf(p.name);
+    const expected = Number.isNaN(unit) ? pdpPrice * 2 : unit * 2;
+    await expect.poll(() => cart.lineTotalOf(p.name), { message: 'line total for quantity 2' }).toBeCloseTo(expected, 2);
+  });
+
+  test('removing one product keeps the other lines and lowers the total', async ({ cart, cartHelper, cfg }) => {
+    // risk: deleting a line resets or drops other cart positions, totals not recalculated
+    const { simpleProduct: a, variantProduct: b } = cfg.testData;
+    test.skip(a.name === b.name, 'simple and variant product have the same name');
+    await cartHelper.add(a, 1);
+    await cartHelper.add(b, 1);
+    await cart.open();
+    await expect(cart.lineItems).toHaveCount(2);
+
+    const guestPrices = cfg.features.guestPrices !== false;
+    if (guestPrices) {
+      // grand total covers every position (gross: + shipping, net: + shipping + tax)
+      expect(await cart.totalValue(), 'grand total below the sum of the lines').toBeGreaterThanOrEqual((await cart.lineTotalsSum()) - 0.01);
+    }
+    const before = guestPrices ? await cart.totalValue() : 0;
+    const keptQty = await cart.quantityOf(b.name);
+
+    await cart.remove(a.name);
+    await expect(cart.lineItems).toHaveCount(1);
+    await expect(cart.lineItem(b.name)).toBeVisible();
+    expect(await cart.quantityOf(b.name), 'quantity of the remaining line changed').toBe(keptQty);
+    if (guestPrices) await expect.poll(() => cart.totalValue()).toBeLessThan(before);
+  });
+
+  test('adding the same product twice increases the quantity of one line', { tag: '@mobile' }, async ({ cart, cartHelper, cfg }) => {
+    // risk: duplicate cart positions for the same product (confusing totals, double shipping rules)
+    const p = cfg.testData.simpleProduct;
+    await cartHelper.add(p, 1);
+    await cartHelper.add(p, 1);
+    await cart.open();
+    await expect(cart.lineItems.filter({ hasText: p.name })).toHaveCount(1);
+    expect(await cart.quantityOf(p.name)).toBe(2);
+  });
+
+  test('an emptied cart cannot proceed to checkout', async ({ page, cart, cartHelper, cfg }) => {
+    // risk: checkout reachable with a cart that was emptied in the same session (stale state)
+    const p = cfg.testData.simpleProduct;
+    await cartHelper.add(p, 1);
+    await cart.open();
+    await cart.remove(p.name);
+    await cart.expectEmpty();
+    await expect(cart.checkoutButton.locator('visible=true'), 'checkout button still offered for an empty cart').toHaveCount(0);
+    await page.goto(cfg.routes.checkoutConfirm);
+    await expect(page).toHaveURL(new RegExp(cfg.routes.cart));
+  });
+
   test('remove product from off-canvas cart', async ({ product, offcanvasCart, cfg }) => {
     const p = cfg.testData.simpleProduct;
     await product.open(p);

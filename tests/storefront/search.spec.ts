@@ -59,6 +59,34 @@ test.describe('Product search', () => {
     await expect(page.locator(cfg.selectors.search.emptyAlert).first()).toBeVisible();
   });
 
+  test('empty, blank and very long search terms are handled', async ({ page, cfg }) => {
+    // risk: missing/oversized input crashes the search (500) instead of a normal page.
+    // What an empty term shows is shop behaviour (Shopware may list all products) → not asserted.
+    for (const [label, term] of [['empty', ''], ['blank', '   '], ['1000 characters', 'a'.repeat(1000)]]) {
+      const res = await page.goto(`${cfg.routes.search}?search=${encodeURIComponent(term)}`);
+      expect(res?.status(), `${label} search term`).toBeLessThan(500);
+      await expect(page.locator(cfg.selectors.header.logo).locator('visible=true').first(), `${label}: shop page rendered`).toBeVisible();
+    }
+  });
+
+  test('sorting search results keeps the search term', async ({ page, cfg, listing }) => {
+    // risk: changing the order replaces the result list with the whole catalogue
+    const term = cfg.testData.searchTerm;
+    await page.goto(`${cfg.routes.search}?search=${encodeURIComponent(term)}`, { waitUntil: 'load' });
+    test.skip(!(await listing.sorting.isVisible()), 'No sorting on the search page');
+    const before = await listing.productBoxes.count();
+    await listing.sortBy('name-desc');
+    await expect(page).toHaveURL(new RegExp(`search=${encodeURIComponent(term)}`));
+    await expect(page.locator(cfg.selectors.search.headline)).toContainText(term, { ignoreCase: true });
+    expect(await listing.productBoxes.count(), 'number of results changed by sorting').toBe(before);
+  });
+
+  test('very deep page numbers in search do not cause a server error', async ({ page, cfg }) => {
+    // risk: same result-window limit as on categories, reachable with any search term
+    const res = await page.goto(`${cfg.routes.search}?search=${encodeURIComponent(cfg.testData.searchTerm)}&p=99999`);
+    expect(res?.status()).toBeLessThan(500);
+  });
+
   test('handles special characters safely', async ({ page, cfg }) => {
     const res = await page.goto(`${cfg.routes.search}?search=${encodeURIComponent('<script>alert(1)</script> "ä&%')}`);
     expect(res?.status()).toBeLessThan(500);
