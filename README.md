@@ -27,6 +27,7 @@ ALLOW_WRITE_TESTS=false npm test   # production-safe: no customers, orders or fo
 npm run test:ui                    # Playwright UI mode for debugging
 npm run test:crawl                 # catalog crawler only (leave it out elsewhere: --grep-invert @crawl)
 npm run test:security              # passive security checks only
+npm run test:responsive            # responsive layout suite, all 21 viewports (default runs use a core set of 6)
 ```
 
 ---
@@ -101,6 +102,7 @@ test('customer orders', async ({ loggedInPage, cartHelper, checkout, account, cf
 | `@mobile` | also runs in the `mobile` project (Pixel 7) |
 | `@mobile-only` | runs only in the `mobile` project |
 | `@client` | client-specific tests |
+| `@responsive` | responsive layout suite (`npm run test:responsive`) |
 
 ---
 
@@ -127,6 +129,7 @@ test('customer orders', async ({ loggedInPage, cartHelper, checkout, account, cf
 | `cart-merge` | guest cart + saved account cart merged at login (nothing lost or duplicated), account cart not visible after logout, cart follows the customer to a new browser session — snapshots and restores the test account's cart |
 | `catalog-crawl` (`@crawl`) | samples categories from the navigation and their products (size: `crawl` in the profile): broken pages, empty category listings, products priced 0, without image or description, in stock but not buyable |
 | `security` | security headers, session cookie flags, no open redirect after login, HTTP → HTTPS, no debug output / profiler, no exposed files (`.env`, `.git` …), no directory listings, Admin API needs a token. Bot-protection answers count as *inconclusive* (skipped) |
+| `responsive-layout` (`@responsive`) | every core page (home, listing, PDP, search, cart, login, register, recovery, 404, account, checkout) and the shared components (navigation + flyout / burger menu, filters, search, cookie banner, off-canvas cart) at desktop, laptop, tablet and phone sizes, portrait and landscape: horizontal overflow (with the causing elements), elements cut off at the screen edge, clipped text, covered controls, fixed/sticky bars hiding the screen, stretched images, touch targets (WCAG 2.5.8), product grid columns, layout after live resizing. Failures attach the measured issues as JSON and a full-page screenshot with the offenders outlined. Viewports: `LAYOUT_VIEWPORTS=all` or a name part (`LAYOUT_VIEWPORTS=mobile-320x568`); shop specifics in `layout` of the profile |
 | `links-and-errors` | important links, configured redirects, broken header/footer links, sitemap/robots, 404 page, bad params, bad POST |
 
 ---

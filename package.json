@@ -10,6 +10,7 @@
     "test:mobile": "playwright test --project=mobile",
     "test:client": "playwright test tests/client",
     "test:crawl": "playwright test --grep @crawl --project=chromium",
+    "test:responsive": "LAYOUT_VIEWPORTS=all playwright test --grep @responsive --project=chromium",
     "test:security": "playwright test tests/storefront/security.spec.ts --project=chromium",
     "test:headed": "playwright test --headed --project=chromium",
     "test:ui": "playwright test --ui",

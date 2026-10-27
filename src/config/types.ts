@@ -198,7 +198,24 @@ export interface ProjectConfig {
 
   /** Sample size of the catalog crawler (tests/storefront/catalog-crawl.spec.ts); defaults when unset. */
   crawl?: CrawlConfig;
+
+  /** Responsive layout suite (tests/storefront/responsive-layout.spec.ts); works with the defaults when unset. */
+  layout?: LayoutTestConfig;
 }
+
+export interface LayoutTestConfig {
+  /** Extra guest pages audited at every viewport (CMS, legal, landing pages …) — core routes are always included. */
+  pages?: ClientPage[];
+  /** Elements left out of the layout checks (third-party chat widgets, intentionally overflowing banners …). */
+  ignore?: string[];
+  /** Below this width the theme shows the mobile (burger) navigation (default 992 — Bootstrap "lg"). */
+  mobileNavBelow?: number;
+  /** Minimum touch target size on touch viewports in px (default 24 — WCAG 2.5.8; 0 = off). */
+  minTargetSize?: number;
+  /** Narrowest acceptable product box in the listing grid in px (default 140). */
+  minProductBoxWidth?: number;
+}
+
 
 export interface CrawlConfig {
   /** Category pages taken from the main navigation (default 12). */
