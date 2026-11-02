@@ -34,7 +34,9 @@ const config: ProjectConfig = {
     languageSwitch: false,           // English only, no switcher
     currencySwitch: false,
     mobileNavigation: true,
-    orderPlacement: false,           // Mirakl marketplace staging — never place real orders
+    // Mirakl marketplace: every order goes to Mirakl. true = each run places 2 test orders (guest + customer) with
+    // Cash on delivery — only on dev with approval. Flow verified with test order #10203 (2026-11-02).
+    orderPlacement: false,
   },
 
   routes: {
@@ -62,11 +64,12 @@ const config: ProjectConfig = {
 
     // ⚠ No usable simple product: products without a configurator (Callie Pump, TEST …) cost $0.00
     // and get "No longer available from a seller" in the cart (no Mirakl offer). Same as Echonut,
-    // a variant child with a live offer ($98.00) stands in. The reference suite's Lodge Hoodie is sold out.
+    // a variant child with a live offer stands in. The reference suite's Lodge Hoodie is sold out.
+    // 2026-11-02: Breeze Tutu Skirt (PTE7039301) lost its offer → Arahi 8 ($99.99, ordered in test order #10203)
     simpleProduct: {
-      path: '/Breeze-Tutu-Skirt-Baby/PTE7039301',
-      productNumber: 'PTE7039301',
-      name: 'Breeze Tutu Skirt (Baby)',
+      path: '/Arahi-8/1168690011',
+      productNumber: '1168690011',
+      name: 'Arahi 8',
     },
 
     variantProduct: {
@@ -106,7 +109,7 @@ const config: ProjectConfig = {
     contactLinkText: /Contact|Help center/i,
     // verified 2026-10-19 — footer "Customer care" column, all 200
     legalLinks: [/Terms & Conditions/i, /Privacy policy/i, /Returns & refund/i],
-    paymentMethod: null,
+    paymentMethod: 'Cash on delivery',   // only method without an external provider (no payment data entered)
     shippingMethod: null,
     promotionCode: null,
     // Bazaarvoice replaces Shopware's reviews on purpose — no .product-detail-review-teaser on any PDP
@@ -262,6 +265,10 @@ const config: ProjectConfig = {
     checkout: {
       // stepped one-page checkout: payment methods sit in a collapsed "Payment" step (verified on dev 2026-10-21)
       paymentReveal: '[data-themallstreet-opc-open-step="payment"]',
+      // #tos is visually hidden and never checked — "By placing this order, you agree …" (order #10203 went through)
+      tos: '',
+      finishHeader: '.themallstreet-finish__title',
+      finishOrderNumber: '.themallstreet-finish__meta',   // "Order Reference: #10203"
     },
     account: {
       // no sidebar: /account is one dashboard of cards (Profile, Wishlist, Messages, Address Book,

@@ -70,6 +70,7 @@ test.describe('Checkout', () => {
     skipUnless(cfg.features.orderPlacement, 'orderPlacement');
     await cartHelper.add(cfg.testData.simpleProduct);
     await checkout.openConfirm();
+    test.skip(!cfg.selectors.checkout.tos, 'Terms are accepted by placing the order (no checkbox)');
     const tos = page.locator(cfg.selectors.checkout.tos);
     test.skip((await tos.count()) === 0, 'Shop has no TOS checkbox');
     await checkout.submitButton.click();

@@ -177,7 +177,7 @@ They are deleted after each test and a teardown project deletes any leftovers by
 
 - **GitLab**: `.gitlab-ci.yml` — `smoke` on MRs/default branch, sharded `regression` nightly (schedule) or manually.
 - **GitHub Actions**: `.github/workflows/playwright.yml` — smoke on PRs, full sharded run on push/nightly.
-- **Bitbucket Pipelines**: `bitbucket-pipelines.yml` — smoke on PRs and `main`; `custom: full-regression` (2 parallel shards) for manual runs and nightly schedules (*Pipelines → Schedules*). Secrets go in *Repository settings → Repository variables* (Secured).
+- **Bitbucket Pipelines**: `bitbucket-pipelines.yml` — one parallel step per shop (Mall Street, Echonut, Würth): smoke on PRs and `main`, every test in `custom: nightly-all-shops` (schedule it under *Pipelines → Schedules*), single shops via `custom: mallstreet | echonut | wurth`. Each shop's variables live in its deployment environment (*Repository settings → Deployments*, same names as `.env`, secrets "Secured"); steps run `ci/e2e.sh`. For now only Mall Street is active; the Echonut and Würth steps are commented out until their environments exist.
 
 Delete the CI files you don't use.
 

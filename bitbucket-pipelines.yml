@@ -1,69 +1,77 @@
-# Bitbucket Pipelines — Shopware Playwright suite
+# Bitbucket Pipelines — Shopware Playwright suite, one parallel step per shop
 #
-# Repository settings → Repository variables (mark secrets as "Secured"):
-#   PROJECT, BASE_URL, ADMIN_USERNAME + ADMIN_PASSWORD (or ADMIN_CLIENT_ID + ADMIN_CLIENT_SECRET)
-#   optional: HTTP_USERNAME, HTTP_PASSWORD, SW_ACCESS_KEY, ALLOW_WRITE_TESTS
+# Setup (once):
+#   1. Repository settings → Deployments: create the environments  mallstreet, echonut, wurth
+#      (type "Test"). Only mallstreet exists so far — the Echonut / Würth steps are commented out until theirs do.
+#      Each environment's variables are that shop's .env values — same names:
+#        BASE_URL, ALLOW_WRITE_TESTS, CLEANUP_TEST_DATA,
+#        ADMIN_CLIENT_ID + ADMIN_CLIENT_SECRET (or ADMIN_USERNAME + ADMIN_PASSWORD),
+#        HTTP_USERNAME + HTTP_PASSWORD, TEST_CUSTOMER_EMAIL + TEST_CUSTOMER_PASSWORD, SW_ACCESS_KEY
+#      Mark passwords / secrets as "Secured". Optional: HEADED=true (bot protection that blocks headless browsers).
+#      PROJECT is taken from the environment name.
+#   2. Pipelines → Schedules → New schedule → branch main, pipeline "custom: nightly-all-shops", daily.
 #
-# Nightly run: Pipelines → Schedules → New schedule → pipeline "custom: full-regression"
+# Each step runs ci/e2e.sh. Reports: open a step → Artifacts (playwright-report/index.html) and the Tests tab (JUnit).
 
 # Keep the tag in sync with @playwright/test in package.json
 image: mcr.microsoft.com/playwright:v1.63.0-noble
 
-options:
-  max-time: 45
-
 definitions:
   steps:
+    - step: &full
+        name: Full suite
+        size: 2x
+        max-time: 120
+        caches: [node]
+        script:
+          - bash ci/e2e.sh full
+        artifacts:
+          - playwright-report/**
+          - test-results/**
     - step: &smoke
-        name: Smoke tests (chromium)
+        name: Smoke
         size: 2x
+        max-time: 30
         caches: [node]
         script:
-          - export CI=true
-          - npm ci
-          - npx playwright test --grep @smoke --project=chromium
-        artifacts:
-          - playwright-report/**
-          - test-results/**
-    - step: &shard1
-        name: Full regression 1/2
-        size: 2x
-        caches: [node]
-        script:
-          - export CI=true
-          - npm ci
-          - npx playwright test --shard=1/2
-        artifacts:
-          - playwright-report/**
-          - test-results/**
-    - step: &shard2
-        name: Full regression 2/2
-        size: 2x
-        caches: [node]
-        script:
-          - export CI=true
-          - npm ci
-          - npx playwright test --shard=2/2
+          - bash ci/e2e.sh smoke
         artifacts:
           - playwright-report/**
           - test-results/**
 
 pipelines:
-  # every pull request → quick smoke run
+  # every pull request → smoke tests on every shop
   pull-requests:
     '**':
-      - step: *smoke
+      - step: { <<: *smoke, name: Smoke – Mall Street, deployment: mallstreet }
+      # once their deployment environments exist, wrap the steps in "- parallel:" and add:
+      # - step: { <<: *smoke, name: Smoke – Echonut, deployment: echonut }
+      # - step: { <<: *smoke, name: Smoke – Würth, deployment: wurth }
 
-  # pushes to main → smoke run
+  # every push to main → smoke tests on every shop
   branches:
     main:
-      - step: *smoke
+      - step: { <<: *smoke, name: Smoke – Mall Street, deployment: mallstreet }
+      # once their deployment environments exist, wrap the steps in "- parallel:" and add:
+      # - step: { <<: *smoke, name: Smoke – Echonut, deployment: echonut }
+      # - step: { <<: *smoke, name: Smoke – Würth, deployment: wurth }
 
-  # manual or scheduled (nightly) → full suite, desktop + mobile, 2 parallel shards
   custom:
-    full-regression:
-      - parallel:
-          - step: *shard1
-          - step: *shard2
-    smoke:
-      - step: *smoke
+    # scheduled every night (Pipelines → Schedules) or started by hand ("Run pipeline")
+    nightly-all-shops:
+      - variables:
+          - name: TEST_GREP
+            default: ''
+            description: 'Empty = all tests. Otherwise only tests matching, e.g. @checkout'
+      - step: { <<: *full, name: All tests – Mall Street, deployment: mallstreet }
+      # once their deployment environments exist, wrap the steps in "- parallel:" and add:
+      # - step: { <<: *full, name: All tests – Echonut, deployment: echonut }
+      # - step: { <<: *full, name: All tests – Würth, deployment: wurth }
+
+    # one shop at a time, by hand
+    mallstreet:
+      - step: { <<: *full, name: All tests – Mall Street, deployment: mallstreet }
+    # echonut:
+    #   - step: { <<: *full, name: All tests – Echonut, deployment: echonut }
+    # wurth:
+    #   - step: { <<: *full, name: All tests – Würth, deployment: wurth }

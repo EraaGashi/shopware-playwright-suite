@@ -46,6 +46,14 @@ export class CheckoutPage extends BasePage {
   }
 
   async selectPaymentMethod(label: string): Promise<void> {
+    if (this.s.checkout.paymentReveal) {
+      // stepped checkout: the labels sit in a collapsed step → choose by the method's value
+      await this.revealPayment();
+      const method = (await this.paymentMethods()).find((m) => new RegExp(escapeRegExp(label), 'i').test(m.label));
+      expect(method, `payment method "${label}" not offered`).toBeTruthy();
+      if (!method!.checked) await this.choosePayment(method!.value);
+      return;
+    }
     const lbl = this.$(this.s.checkout.paymentMethodLabel).filter({ hasText: new RegExp(escapeRegExp(label), 'i') }).first();
     await Promise.all([this.page.waitForLoadState('domcontentloaded'), lbl.click()]);
   }
@@ -56,6 +64,7 @@ export class CheckoutPage extends BasePage {
   }
 
   async acceptTerms(): Promise<void> {
+    if (!this.s.checkout.tos) return; // accepted by placing the order
     const tos = this.$(this.s.checkout.tos).first();
     if (!(await tos.count())) return;
     // Shopware JS can re-render the confirm page right after load and drop the
@@ -72,7 +81,10 @@ export class CheckoutPage extends BasePage {
     const { paymentMethod, shippingMethod } = this.cfg.testData;
     if (shippingMethod) await this.selectShippingMethod(shippingMethod);
     if (paymentMethod) await this.selectPaymentMethod(paymentMethod);
+    // stepped checkout: the order button is enabled once the payment step is open
+    await this.revealPayment();
     await this.acceptTerms();
+    await expect(this.submitButton, 'order button stays disabled').toBeEnabled();
     await Promise.all([
       this.page.waitForURL(new RegExp(escapeRegExp(this.cfg.routes.checkoutFinish)), { timeout: 45_000 }),
       this.submitButton.click(),

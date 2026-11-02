@@ -228,6 +228,7 @@ export const shopware67Selectors = {
   },
   checkout: {
     confirmForm: '#confirmOrderForm',
+    /** '' = no checkbox: the theme accepts the terms by placing the order ("By placing this order, you agree …") */
     tos: '#tos',
     submitOrder: '#confirmFormSubmit',
     /** payment plugins that replace the submit button with their own (SwagPayPal smart buttons) */
