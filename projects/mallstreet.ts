@@ -109,6 +109,8 @@ const config: ProjectConfig = {
     paymentMethod: null,
     shippingMethod: null,
     promotionCode: null,
+    // Bazaarvoice replaces Shopware's reviews on purpose — no .product-detail-review-teaser on any PDP
+    reviewWidget: { tab: 'a.review-tab', tabText: 'Reviews', root: '#bv-pdp-reviews', writeButton: /write a review/i },
   },
 
   // Not applicable for this shop (theme decisions, verified 2026-10-19) → skipped with the reason.
@@ -118,6 +120,9 @@ const config: ProjectConfig = {
     { test: 'search suggest shows products while typing', reason: 'no header search; the inspiration search has no suggest dropdown' },
     { test: 'guest can add a product to the wishlist', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
     { test: 'wishlist page shows added product and allows removal', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
+    // no real products yet, all prices 0.00 on purpose (2026-11-02) — remove once the catalog is live
+    { test: 'sampled navigation categories with a product listing are not empty', reason: 'no real products yet — categories are empty on purpose' },
+    { test: 'sampled products have a price above zero', reason: 'no real products yet — all prices are 0.00 on purpose' },
   ],
 
   // Confirmed shop findings (2026-10-19) — tests stay "expected to fail" until fixed, then remove the entry.
@@ -134,6 +139,13 @@ const config: ProjectConfig = {
   ],
 
   importantLinks: ['/', '/checkout/cart', '/account/login', '/sitemap.xml', '/robots.txt'],
+
+  // Responsive layout suite (tests/storefront/responsive-layout.spec.ts)
+  layout: {
+    skipViewports: [
+      { test: 'mobile-320x568', reason: 'header is 6px wider than 320px screens — known, left out on request (2026-11-02)' },
+    ],
+  },
 
   // Configurable client tests (tests/client/, tag @client) — ported from the reference suite
   // (CFE-xxx = its UAT case ids). Verified against the live staging HTML 2026-10-19.

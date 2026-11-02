@@ -176,6 +176,19 @@ export interface ProjectConfig {
     paymentMethod: string | null;
     shippingMethod: string | null;
     promotionCode: string | null;
+    /**
+     * Third-party review widget that replaces Shopware's reviews on the PDP (e.g. Bazaarvoice).
+     * Set → the widget is checked instead of Shopware's review teaser.
+     */
+    reviewWidget?: {
+      /** Reviews tab and its visible text. */
+      tab: string;
+      tabText: string;
+      /** Widget container, attached once the tab is opened. */
+      root: string;
+      /** Accessible name of the "write a review" button inside the widget. */
+      writeButton: string | RegExp;
+    };
   };
 
   /** Redirects that must work (checked for guests unless stated). */
@@ -214,8 +227,9 @@ export interface LayoutTestConfig {
   minTargetSize?: number;
   /** Narrowest acceptable product box in the listing grid in px (default 140). */
   minProductBoxWidth?: number;
+  /** Viewports skipped for this shop (name or part of it, e.g. 'mobile-320x568'), with the reason. */
+  skipViewports?: KnownIssue[];
 }
-
 
 export interface CrawlConfig {
   /** Category pages taken from the main navigation (default 12). */

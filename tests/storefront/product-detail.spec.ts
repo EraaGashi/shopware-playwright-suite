@@ -165,8 +165,24 @@ test.describe('Product detail page', () => {
 
   test('reviews tab/teaser is present', async ({ product, cfg }) => {
     skipUnless(cfg.features.productReviews, 'productReviews');
+    test.skip(!!cfg.testData.reviewWidget, 'Reviews come from a third-party widget (testData.reviewWidget)');
     await product.open(cfg.testData.simpleProduct);
     await expect(product.page.locator(cfg.selectors.product.reviewTeaser).first()).toBeAttached();
+  });
+
+  test('reviews tab with Bazaarvoice widget is present', async ({ product, cfg }) => {
+    skipUnless(cfg.features.productReviews, 'productReviews');
+    const widget = cfg.testData.reviewWidget;
+    test.skip(!widget, 'No third-party review widget configured (testData.reviewWidget)');
+    await product.open(cfg.testData.simpleProduct);
+    const tab = product.page.locator(widget!.tab).first();
+    await expect(tab).toBeVisible();
+    await expect(tab).toContainText(widget!.tabText);
+    await tab.click();
+    const root = product.page.locator(widget!.root);
+    await expect(root).toBeAttached();
+    // rendered by Bazaarvoice's external script — slower than the shop's own markup
+    await expect(root.getByRole('button', { name: widget!.writeButton }).first()).toBeVisible({ timeout: 30_000 });
   });
 
   test('unknown product URL returns 404', async ({ page, cfg }) => {

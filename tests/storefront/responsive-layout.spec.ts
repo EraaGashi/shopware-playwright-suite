@@ -43,6 +43,12 @@ function selectedViewports(): Viewport[] {
 const cfg = loadConfig();
 const layout = cfg.layout ?? {};
 const VIEWPORTS = selectedViewports();
+/** Profile's layout.skipViewports entry for a viewport, if any. */
+const skipOf = (v: Viewport) => layout.skipViewports?.find((s) => (typeof s.test === 'string' ? v.name.includes(s.test) : s.test.test(v.name)));
+const skipViewport = (v: Viewport) => {
+  const skip = skipOf(v);
+  test.skip(!!skip, `Viewport skipped for this shop: ${skip?.reason}`);
+};
 const NOT_FOUND = '/e2e-layout-not-found-page';
 
 /** Guest pages audited at every viewport — derived from the profile, so every shop gets them without setup. */
@@ -163,6 +169,7 @@ function useViewport(v: Viewport): void {
 for (const v of VIEWPORTS) {
   test.describe(`Responsive layout ${v.name}`, { tag: '@responsive' }, () => {
     useViewport(v);
+    skipViewport(v);
     const mobileNav = v.width < (layout.mobileNavBelow ?? 992);
 
     for (const p of guestPages(cfg)) {
@@ -336,6 +343,7 @@ test.describe('Responsive layout logged in', { tag: '@responsive' }, () => {
   for (const v of VIEWPORTS) {
     test.describe(v.name, () => {
       useViewport(v);
+      skipViewport(v);
 
       test('account pages and checkout confirm have no layout defects', async ({ loggedInPage: page, cfg, cart, cartHelper }, testInfo) => {
         const pages: ClientPage[] = [
@@ -369,9 +377,10 @@ test.describe('Responsive layout logged in', { tag: '@responsive' }, () => {
 
 /** Layout must follow a live resize, not only the size at page load. */
 test.describe('Responsive layout resizing', { tag: '@responsive' }, () => {
-  const sizes = [...VIEWPORTS].sort((a, b) => b.width - a.width).filter((v, i, a) => a.findIndex((o) => o.width === v.width) === i);
-  const widest = sizes[0];
+  const sizes = VIEWPORTS.filter((v) => !skipOf(v)).sort((a, b) => b.width - a.width).filter((v, i, a) => a.findIndex((o) => o.width === v.width) === i);
+  const widest = sizes[0] ?? VIEWPORTS[0];
   test.use({ viewport: { width: widest.width, height: widest.height } });
+  test.skip(sizes.length === 0, 'All selected viewports are skipped for this shop');
 
   test('navigation and page width follow the window size', async ({ page, cfg }) => {
     await open(page, cfg.routes.home);
