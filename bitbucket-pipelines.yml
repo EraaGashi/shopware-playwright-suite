@@ -2,7 +2,7 @@
 #
 # Setup (once):
 #   1. Repository settings → Deployments: create the environments  mallstreet, echonut, wurth
-#      (type "Test"). Only mallstreet exists so far — the Echonut / Würth steps are commented out until theirs do.
+#      (type "Test"). mallstreet and wurth exist — the Echonut steps are commented out until its environment does.
 #      Each environment's variables are that shop's .env values — same names:
 #        BASE_URL, ALLOW_WRITE_TESTS, CLEANUP_TEST_DATA,
 #        ADMIN_CLIENT_ID + ADMIN_CLIENT_SECRET (or ADMIN_USERNAME + ADMIN_PASSWORD),
@@ -45,18 +45,20 @@ pipelines:
   # every pull request → smoke tests on every shop
   pull-requests:
     '**':
-      - step: { <<: *smoke, name: Smoke – Mall Street, deployment: mallstreet }
-      # once their deployment environments exist, wrap the steps in "- parallel:" and add:
-      # - step: { <<: *smoke, name: Smoke – Echonut, deployment: echonut }
-      # - step: { <<: *smoke, name: Smoke – Würth, deployment: wurth }
+      - parallel:
+          - step: { <<: *smoke, name: Smoke – Mall Street, deployment: mallstreet }
+          - step: { <<: *smoke, name: Smoke – Würth, deployment: wurth }
+          # once its deployment environment exists:
+          # - step: { <<: *smoke, name: Smoke – Echonut, deployment: echonut }
 
   # every push to main → smoke tests on every shop
   branches:
     main:
-      - step: { <<: *smoke, name: Smoke – Mall Street, deployment: mallstreet }
-      # once their deployment environments exist, wrap the steps in "- parallel:" and add:
-      # - step: { <<: *smoke, name: Smoke – Echonut, deployment: echonut }
-      # - step: { <<: *smoke, name: Smoke – Würth, deployment: wurth }
+      - parallel:
+          - step: { <<: *smoke, name: Smoke – Mall Street, deployment: mallstreet }
+          - step: { <<: *smoke, name: Smoke – Würth, deployment: wurth }
+          # once its deployment environment exists:
+          # - step: { <<: *smoke, name: Smoke – Echonut, deployment: echonut }
 
   custom:
     # scheduled every night (Pipelines → Schedules) or started by hand ("Run pipeline")
@@ -65,15 +67,16 @@ pipelines:
           - name: TEST_GREP
             default: ''
             description: 'Empty = all tests. Otherwise only tests matching, e.g. @checkout'
-      - step: { <<: *full, name: All tests – Mall Street, deployment: mallstreet }
-      # once their deployment environments exist, wrap the steps in "- parallel:" and add:
-      # - step: { <<: *full, name: All tests – Echonut, deployment: echonut }
-      # - step: { <<: *full, name: All tests – Würth, deployment: wurth }
+      - parallel:
+          - step: { <<: *full, name: All tests – Mall Street, deployment: mallstreet }
+          - step: { <<: *full, name: All tests – Würth, deployment: wurth }
+          # once its deployment environment exists:
+          # - step: { <<: *full, name: All tests – Echonut, deployment: echonut }
 
     # one shop at a time, by hand
     mallstreet:
       - step: { <<: *full, name: All tests – Mall Street, deployment: mallstreet }
     # echonut:
     #   - step: { <<: *full, name: All tests – Echonut, deployment: echonut }
-    # wurth:
-    #   - step: { <<: *full, name: All tests – Würth, deployment: wurth }
+    wurth:
+      - step: { <<: *full, name: All tests – Würth, deployment: wurth }
