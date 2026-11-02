@@ -47,6 +47,7 @@ export function loadConfig(): ResolvedConfig {
 
   const testCustomerEmail = str(process.env.TEST_CUSTOMER_EMAIL);
   const testCustomerPassword = str(process.env.TEST_CUSTOMER_PASSWORD);
+  const bypassValue = str(process.env.E2E_HEADER_VALUE);
   const httpUser = str(process.env.HTTP_USERNAME);
   const httpPass = str(process.env.HTTP_PASSWORD);
 
@@ -65,6 +66,7 @@ export function loadConfig(): ResolvedConfig {
       accessKey: str(process.env.SW_ACCESS_KEY),
       testCustomer:
         testCustomerEmail && testCustomerPassword ? { email: testCustomerEmail, password: testCustomerPassword } : undefined,
+      bypassHeader: bypassValue ? { name: str(process.env.E2E_HEADER_NAME) ?? 'x-e2e-bypass', value: bypassValue } : undefined,
       allowWriteTests: bool(process.env.ALLOW_WRITE_TESTS, true),
       cleanupTestData: bool(process.env.CLEANUP_TEST_DATA, true),
     },

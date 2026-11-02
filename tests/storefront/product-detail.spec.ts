@@ -1,4 +1,5 @@
 import { test, expect, skipUnless } from '../../src/fixtures';
+import { routeBypassHeader } from '../../src/utils/http';
 import { ProductPage } from '../../src/pages/ProductPage';
 
 test.describe('Product detail page', () => {
@@ -145,6 +146,7 @@ test.describe('Product detail page', () => {
     await page.reload();
     expect(await product.selectedOptions(), 'options changed after reload').toEqual(chosen);
     const ctx = await browser.newContext({ baseURL: cfg.baseURL, httpCredentials: cfg.env.httpCredentials, storageState: await page.context().storageState() });
+    await routeBypassHeader(ctx, cfg);
     try {
       const fresh = await ctx.newPage();
       const freshProduct = new ProductPage(fresh, cfg);

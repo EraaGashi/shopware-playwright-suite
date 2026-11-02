@@ -331,6 +331,8 @@ export interface ResolvedConfig extends Omit<ProjectConfig, 'selectors'> {
     accessKey?: string;
     /** Existing, active customer to log in with instead of registering a new one per test. */
     testCustomer?: { email: string; password: string };
+    /** Secret header that lets test traffic past the shop's bot protection (E2E_HEADER_NAME / E2E_HEADER_VALUE). */
+    bypassHeader?: { name: string; value: string };
     allowWriteTests: boolean;
     cleanupTestData: boolean;
   };

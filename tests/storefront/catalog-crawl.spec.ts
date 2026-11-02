@@ -5,6 +5,7 @@ import { test, expect } from '../../src/fixtures';
 import { CookieBanner } from '../../src/components/CookieBanner';
 import { ProductPage } from '../../src/pages/ProductPage';
 import { parsePrice } from '../../src/utils/price';
+import { routeBypassHeader } from '../../src/utils/http';
 import type { ResolvedConfig } from '../../src/config/types';
 
 /**
@@ -137,6 +138,7 @@ test.describe('Catalog crawl', { tag: '@crawl' }, () => {
       return;
     }
     const ctx = await browser.newContext({ baseURL: cfg.baseURL, httpCredentials: cfg.env.httpCredentials, locale: cfg.locale });
+    await routeBypassHeader(ctx, cfg);
     try {
       if (cfg.features.cookieBanner) await CookieBanner.preAccept(ctx, cfg.baseURL);
       data = await crawl(await ctx.newPage(), cfg);

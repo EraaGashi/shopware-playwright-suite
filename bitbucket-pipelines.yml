@@ -7,7 +7,9 @@
 #        BASE_URL, ALLOW_WRITE_TESTS, CLEANUP_TEST_DATA,
 #        ADMIN_CLIENT_ID + ADMIN_CLIENT_SECRET (or ADMIN_USERNAME + ADMIN_PASSWORD),
 #        HTTP_USERNAME + HTTP_PASSWORD, TEST_CUSTOMER_EMAIL + TEST_CUSTOMER_PASSWORD, SW_ACCESS_KEY
-#      Mark passwords / secrets as "Secured". Optional: HEADED=true (bot protection that blocks headless browsers).
+#      Mark passwords / secrets as "Secured". Optional: HEADED=true (bot protection that blocks headless browsers),
+#      E2E_HEADER_VALUE (Secured) + E2E_HEADER_NAME (default x-e2e-bypass): secret header for a bot-protection
+#      skip rule (e.g. Cloudflare WAF) — sent to the shop's own host only.
 #      PROJECT is taken from the environment name.
 #   2. Pipelines → Schedules → New schedule → branch main, pipeline "custom: nightly-all-shops", daily.
 #

@@ -5,6 +5,7 @@ import { AuthPage } from '../../src/pages/AuthPage';
 import { CartPage } from '../../src/pages/CartPage';
 import type { ResolvedConfig } from '../../src/config/types';
 import type { TestCustomer } from '../../src/data/customer';
+import { routeBypassHeader } from '../../src/utils/http';
 
 /**
  * Cart behaviour around login / logout / sessions. Uses the `customer` fixture: a fixed test account
@@ -24,6 +25,7 @@ test.describe('Cart across login and sessions', () => {
 
   async function newSession(browser: Browser, cfg: ResolvedConfig): Promise<Page> {
     const ctx = await browser.newContext({ baseURL: cfg.baseURL, httpCredentials: cfg.env.httpCredentials, locale: cfg.locale });
+    await routeBypassHeader(ctx, cfg);
     if (cfg.features.cookieBanner) await CookieBanner.preAccept(ctx, cfg.baseURL);
     return ctx.newPage();
   }

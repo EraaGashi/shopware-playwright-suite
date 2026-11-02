@@ -1,5 +1,6 @@
 import { request, type APIRequestContext } from '@playwright/test';
 import type { ResolvedConfig } from '../config/types';
+import { bypassHeaders } from '../utils/http';
 
 type Criteria = Record<string, unknown>;
 
@@ -19,7 +20,7 @@ export class AdminApiClient {
     const ctx = await request.newContext({
       baseURL: cfg.baseURL,
       httpCredentials: cfg.env.httpCredentials,
-      extraHTTPHeaders: { Accept: 'application/json' },
+      extraHTTPHeaders: { Accept: 'application/json', ...bypassHeaders(cfg) },
     });
     return new AdminApiClient(ctx, cfg);
   }

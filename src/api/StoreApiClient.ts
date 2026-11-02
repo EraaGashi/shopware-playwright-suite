@@ -1,5 +1,6 @@
 import { request, type APIRequestContext } from '@playwright/test';
 import type { ResolvedConfig } from '../config/types';
+import { bypassHeaders } from '../utils/http';
 import type { TestCustomer } from '../data/customer';
 
 /**
@@ -18,7 +19,7 @@ export class StoreApiClient {
     const ctx = await request.newContext({
       baseURL: cfg.baseURL,
       httpCredentials: cfg.env.httpCredentials,
-      extraHTTPHeaders: { 'sw-access-key': accessKey, Accept: 'application/json' },
+      extraHTTPHeaders: { 'sw-access-key': accessKey, Accept: 'application/json', ...bypassHeaders(cfg) },
     });
     return new StoreApiClient(ctx, cfg);
   }

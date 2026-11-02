@@ -138,6 +138,11 @@ test('customer orders', async ({ loggedInPage, cartHelper, checkout, account, cf
 
 The suite works without API credentials, but is faster and cleans up after itself with them.
 
+**Bot protection (Cloudflare & co.)**: CI servers get challenged ("Performing security verification"). Ask the
+hosting team for a WAF rule that skips challenges when a secret header is present, and set the same secret as
+`E2E_HEADER_VALUE` (header name `E2E_HEADER_NAME`, default `x-e2e-bypass`). The suite then sends it with every
+browser and API request to the shop's own host — never to third parties (payment, reviews, trackers).
+
 1. **Admin API** — recommended: create an *Integration* in the admin
    (*Settings → System → Integrations*, with admin rights) → `ADMIN_CLIENT_ID` / `ADMIN_CLIENT_SECRET`.
    Alternative: `ADMIN_USERNAME` / `ADMIN_PASSWORD` of a dedicated test admin user.

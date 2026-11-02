@@ -1,6 +1,10 @@
 import type { APIResponse, Page } from '@playwright/test';
 import { test, expect } from '../../src/fixtures';
-import { isBotChallenge } from '../../src/utils/http';
+import { bypassHeaders, isBotChallenge } from '../../src/utils/http';
+import { loadConfig } from '../../src/config/loader';
+
+/** Bot-protection bypass for the shop (unset = none) — the checks below look at the shop, not at Cloudflare. */
+const bypass = bypassHeaders(loadConfig());
 
 /**
  * Passive security checks — read-only, no attacks, nothing written. Requests go through the browser
@@ -10,7 +14,7 @@ import { isBotChallenge } from '../../src/utils/http';
 
 /** GET through the page's own session (cookies of the browser) — null = bot protection answered. */
 async function get(page: Page, path: string): Promise<{ res: APIResponse; body: string } | null> {
-  const res = await page.request.get(path, { maxRedirects: 0, failOnStatusCode: false });
+  const res = await page.request.get(path, { headers: bypass, maxRedirects: 0, failOnStatusCode: false });
   const body = await res.text().catch(() => '');
   return isBotChallenge(res.status(), res.headers(), body) ? null : { res, body };
 }
@@ -67,7 +71,7 @@ test.describe('Security', () => {
     test.skip(!cfg.baseURL.startsWith('https://'), 'Shop is not served over HTTPS');
     const url = cfg.baseURL.replace(/^https:/, 'http:') + cfg.routes.login;
     // one request without following redirects: the answer itself must point to https://
-    const res = await page.request.get(url, { maxRedirects: 0, failOnStatusCode: false, timeout: 15_000 });
+    const res = await page.request.get(url, { headers: bypass, maxRedirects: 0, failOnStatusCode: false, timeout: 15_000 });
     const body = await res.text().catch(() => '');
     test.skip(isBotChallenge(res.status(), res.headers(), body), 'Inconclusive: bot protection answered the http:// request');
     expect([301, 302, 307, 308], `http:// answered ${res.status()} instead of a redirect`).toContain(res.status());

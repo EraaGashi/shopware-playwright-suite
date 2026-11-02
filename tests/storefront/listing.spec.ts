@@ -1,4 +1,5 @@
 import { test, expect } from '../../src/fixtures';
+import { routeBypassHeader } from '../../src/utils/http';
 import { isSortedAsc, isSortedDesc, parsePrice } from '../../src/utils/price';
 
 test.describe('Product listing', () => {
@@ -275,6 +276,7 @@ test.describe('Filters', () => {
     const url = page.url();
     const names = await listing.productNames();
     const ctx = await browser.newContext({ baseURL: cfg.baseURL, httpCredentials: cfg.env.httpCredentials, storageState: await page.context().storageState() });
+    await routeBypassHeader(ctx, cfg);
     try {
       const fresh = await ctx.newPage();
       await fresh.goto(url);

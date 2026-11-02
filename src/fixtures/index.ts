@@ -15,6 +15,7 @@ import { AuthPage } from '../pages/AuthPage';
 import { AccountPage } from '../pages/AccountPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 import { ContactPage } from '../pages/ContactPage';
+import { bypassHeaders, routeBypassHeader } from '../utils/http';
 
 /** Fast storefront cart setup through the storefront's own form endpoint (shares the browser session). */
 export class CartHelper {
@@ -34,6 +35,7 @@ export class CartHelper {
     }
     const id = await this.storeApi.productIdByNumber(product.productNumber);
     const res = await this.page.request.post('/checkout/line-item/add', {
+      headers: bypassHeaders(this.cfg),
       form: {
         redirectTo: 'frontend.cart.offcanvas',
         [`lineItems[${id}][id]`]: id,
@@ -108,7 +110,20 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   // ---------- test scoped ----------
   acceptCookies: [true, { option: true }],
 
+  // plain HTTP checks (links, sitemap, health) — with the bot-protection bypass header when configured
+  request: async ({ request, playwright, cfg }, use) => {
+    if (!cfg.env.bypassHeader) return use(request);
+    const ctx = await playwright.request.newContext({
+      baseURL: cfg.baseURL,
+      httpCredentials: cfg.env.httpCredentials,
+      extraHTTPHeaders: bypassHeaders(cfg),
+    });
+    await use(ctx);
+    await ctx.dispose();
+  },
+
   context: async ({ context, cfg, acceptCookies }, use) => {
+    await routeBypassHeader(context, cfg);
     if (acceptCookies && cfg.features.cookieBanner) await CookieBanner.preAccept(context, cfg.baseURL);
     await use(context);
   },
@@ -160,6 +175,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     } else {
       // Fallback: register through the UI in an isolated context
       const ctx = await browser.newContext({ baseURL: cfg.baseURL, httpCredentials: cfg.env.httpCredentials });
+      await routeBypassHeader(ctx, cfg);
       await CookieBanner.preAccept(ctx, cfg.baseURL);
       const p = await ctx.newPage();
       const auth = new AuthPage(p, cfg);
