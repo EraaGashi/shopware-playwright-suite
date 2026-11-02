@@ -14,13 +14,14 @@ test.describe('Product detail page', () => {
     // B2B shops (guestPrices=false) show price, tax and delivery info only after login
     if (cfg.features.guestPrices !== false) {
       expect(await product.priceValue()).toBeGreaterThan(0);
-      await expect(product.page.locator(s.tax).first()).toBeVisible();
-      await expect(product.page.locator(s.delivery).first()).toBeVisible();
+      if (s.tax) await expect(product.page.locator(s.tax).first()).toBeVisible(); // '' = no tax notice (e.g. US prices)
+      if (s.delivery) await expect(product.page.locator(s.delivery).first()).toBeVisible(); // '' = no delivery info
     }
     await expect(product.page.locator(s.description).first()).toBeAttached();
   });
 
   test('delivery promise does not show dates in the past', async ({ product, cfg }) => {
+    test.skip(!cfg.selectors.product.delivery, 'Shop shows no delivery information (selectors.product.delivery = \'\')');
     await product.open(cfg.testData.simpleProduct);
     const delivery = product.page.locator(cfg.selectors.product.delivery).first();
     test.skip(!(await delivery.count()), 'No delivery information on the product page');

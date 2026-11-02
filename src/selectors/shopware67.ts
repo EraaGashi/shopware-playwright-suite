@@ -124,7 +124,9 @@ export const shopware67Selectors = {
     properties: '.product-detail-properties',
     tabs: '.product-detail-tabs',
     reviewTeaser: '.product-detail-review-teaser',
+    /** '' = the shop shows no delivery information on the PDP */
     delivery: '.product-detail-delivery-information, .delivery-information',
+    /** '' = the shop shows no tax notice (e.g. US prices without sales tax) */
     tax: '.product-detail-tax',
     wishlistButton: '.product-wishlist-action, .product-wishlist-btn',
     /** B2B shops (guestPrices=false): "log in to see prices" instead of the price */

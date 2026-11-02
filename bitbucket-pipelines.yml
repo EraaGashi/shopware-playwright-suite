@@ -10,6 +10,7 @@
 #      Mark passwords / secrets as "Secured". Optional: HEADED=true (bot protection that blocks headless browsers),
 #      E2E_HEADER_VALUE (Secured) + E2E_HEADER_NAME (default x-e2e-bypass): secret header for a bot-protection
 #      skip rule (e.g. Cloudflare WAF) — sent to the shop's own host only.
+#      WORKERS=1 for shops that rate-limit parallel browsers (Miniature Market staging answers 429).
 #      PROJECT is taken from the environment name.
 #   2. Pipelines → Schedules → New schedule → branch main, pipeline "custom: nightly-all-shops", daily.
 #
@@ -48,8 +49,9 @@ pipelines:
       - parallel:
           - step: { <<: *smoke, name: Smoke – Mall Street, deployment: mallstreet }
           - step: { <<: *smoke, name: Smoke – Würth, deployment: wurth }
-          # once its deployment environment exists:
+          # once their deployment environments exist:
           # - step: { <<: *smoke, name: Smoke – Echonut, deployment: echonut }
+          # - step: { <<: *smoke, name: Smoke – Miniature Market, deployment: miniaturemarket }
 
   # every push to main → smoke tests on every shop
   branches:
@@ -57,8 +59,9 @@ pipelines:
       - parallel:
           - step: { <<: *smoke, name: Smoke – Mall Street, deployment: mallstreet }
           - step: { <<: *smoke, name: Smoke – Würth, deployment: wurth }
-          # once its deployment environment exists:
+          # once their deployment environments exist:
           # - step: { <<: *smoke, name: Smoke – Echonut, deployment: echonut }
+          # - step: { <<: *smoke, name: Smoke – Miniature Market, deployment: miniaturemarket }
 
   custom:
     # scheduled every night (Pipelines → Schedules) or started by hand ("Run pipeline")
@@ -70,8 +73,9 @@ pipelines:
       - parallel:
           - step: { <<: *full, name: All tests – Mall Street, deployment: mallstreet }
           - step: { <<: *full, name: All tests – Würth, deployment: wurth }
-          # once its deployment environment exists:
+          # once their deployment environments exist:
           # - step: { <<: *full, name: All tests – Echonut, deployment: echonut }
+          # - step: { <<: *full, name: All tests – Miniature Market, deployment: miniaturemarket }
 
     # one shop at a time, by hand
     mallstreet:
@@ -80,3 +84,6 @@ pipelines:
     #   - step: { <<: *full, name: All tests – Echonut, deployment: echonut }
     wurth:
       - step: { <<: *full, name: All tests – Würth, deployment: wurth }
+    # needs the deployment environment "miniaturemarket" (ALLOW_WRITE_TESTS=false, WORKERS=1)
+    miniaturemarket:
+      - step: { <<: *full, name: All tests – Miniature Market, deployment: miniaturemarket }

@@ -30,8 +30,10 @@ export class CookieBanner extends BasePage {
     // Real consent cookies from setup (cookie-preference + cookie-config-hash). Without the hash some
     // shops show the banner again a few seconds after load — on mobile it then covers buttons.
     const file = consentFile(baseURL);
-    if (fs.existsSync(file)) {
-      await context.addCookies(JSON.parse(fs.readFileSync(file, 'utf8')) as Cookie[]);
+    const recorded = fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, 'utf8')) as Cookie[]) : [];
+    // nothing recorded (e.g. the shop's "only necessary" button sets no cookie) → Shopware's default cookie below
+    if (recorded.length) {
+      await context.addCookies(recorded);
       return;
     }
     const { hostname } = new URL(baseURL);
@@ -40,15 +42,22 @@ export class CookieBanner extends BasePage {
     ]);
   }
 
-  /** Clicks "only necessary" like a visitor and stores the resulting consent cookies for preAccept(). */
+  /**
+   * Clicks "only necessary" like a visitor (or "accept all", see cfg.consentRecording) and stores the
+   * resulting consent cookies for preAccept().
+   */
   async recordConsent(baseURL: string): Promise<void> {
+    const rec = this.cfg.consentRecording;
+    const keep = rec?.keep ?? /^cookie-(preference|config-hash)$/;
     await this.page.goto('/', { waitUntil: 'load' });
     await this.banner.first().waitFor({ state: 'visible' });
-    await this.acceptOnlyNecessary();
+    if (rec?.button === 'acceptAll') await this.$(this.s.cookie.acceptAll).first().click();
+    else await this.acceptOnlyNecessary();
     await this.banner.first().waitFor({ state: 'hidden' });
-    const consent = async () => (await this.page.context().cookies()).filter((c) => /^cookie-(preference|config-hash)$/.test(c.name));
+    const consent = async () => (await this.page.context().cookies()).filter((c) => keep.test(c.name));
     // cookie-config-hash is written a moment after the click (not every shop sets it → give up after 5 s)
-    await expect.poll(async () => (await consent()).length, { timeout: 5_000 }).toBe(2).catch(() => undefined);
+    if (!rec) await expect.poll(async () => (await consent()).length, { timeout: 5_000 }).toBe(2).catch(() => undefined);
+    else await this.page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined);
     const cookies = await consent();
     fs.mkdirSync(path.dirname(consentFile(baseURL)), { recursive: true });
     fs.writeFileSync(consentFile(baseURL), JSON.stringify(cookies, null, 2));

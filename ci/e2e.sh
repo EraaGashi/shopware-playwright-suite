@@ -18,6 +18,8 @@ else
 fi
 # manual runs: "Run pipeline" → variable TEST_GREP, e.g. @checkout or "Product search"
 if [ -n "${TEST_GREP:-}" ]; then args+=(--grep "$TEST_GREP"); fi
+# shops that rate-limit parallel browsers (HTTP 429): set WORKERS=1 in their deployment environment
+if [ -n "${WORKERS:-}" ]; then args+=(--workers="$WORKERS"); fi
 
 echo "Shop: $PROJECT | URL: ${BASE_URL:-profile default} | mode: $MODE${TEST_GREP:+ | grep: $TEST_GREP} | headed: ${HEADED:-false}"
 

@@ -182,7 +182,7 @@ They are deleted after each test and a teardown project deletes any leftovers by
 
 - **GitLab**: `.gitlab-ci.yml` — `smoke` on MRs/default branch, sharded `regression` nightly (schedule) or manually.
 - **GitHub Actions**: `.github/workflows/playwright.yml` — smoke on PRs, full sharded run on push/nightly.
-- **Bitbucket Pipelines**: `bitbucket-pipelines.yml` — one parallel step per shop (Mall Street, Echonut, Würth): smoke on PRs and `main`, every test in `custom: nightly-all-shops` (schedule it under *Pipelines → Schedules*), single shops via `custom: mallstreet | echonut | wurth`. Each shop's variables live in its deployment environment (*Repository settings → Deployments*, same names as `.env`, secrets "Secured"); steps run `ci/e2e.sh`. For now Mall Street and Würth are active; the Echonut steps are commented out until its environment exists.
+- **Bitbucket Pipelines**: `bitbucket-pipelines.yml` — one parallel step per shop (Mall Street, Echonut, Würth): smoke on PRs and `main`, every test in `custom: nightly-all-shops` (schedule it under *Pipelines → Schedules*), single shops via `custom: mallstreet | echonut | wurth`. Each shop's variables live in its deployment environment (*Repository settings → Deployments*, same names as `.env`, secrets "Secured"); steps run `ci/e2e.sh`. For now Mall Street and Würth are active; Echonut and Miniature Market (manual pipeline `custom: miniaturemarket` only) follow once their environments exist. `WORKERS=1` in an environment limits parallel browsers for shops that rate-limit (HTTP 429).
 
 Delete the CI files you don't use.
 

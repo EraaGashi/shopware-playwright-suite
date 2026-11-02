@@ -60,16 +60,33 @@ export class ListingPage extends BasePage {
   /**
    * Runs `action` and waits until Shopware has swapped in the new listing HTML —
    * the XHR response alone arrives before the old product boxes are replaced.
+   * Themes that reload the whole page instead (?order=… as a normal navigation) are handled too.
    */
   private async reloadListing(action: () => Promise<unknown>): Promise<void> {
     const oldBox = await this.productBoxes.first().elementHandle({ timeout: 1_000 }).catch(() => null);
-    await this.waitForXhr(ListingPage.LISTING_XHR, action);
+    // 'domcontentloaded' only fires for a new document (pushState URL updates don't count)
+    const reloaded = Promise.any([
+      this.page.waitForResponse((r) => ListingPage.LISTING_XHR.test(r.url()) && !r.url().includes('only-aggregations') && r.status() < 400).then(() => 'xhr' as const),
+      this.page.waitForEvent('domcontentloaded').then(() => 'page' as const),
+    ]);
+    await action();
+    if ((await reloaded) === 'page') {
+      await this.page.waitForLoadState('load', { timeout: 15_000 }).catch(() => undefined);
+      return;
+    }
     if (oldBox) await this.page.waitForFunction((el) => !el.isConnected, oldBox);
+  }
+
+  /** Opens a filter's dropdown / collapsible section unless it is already open. */
+  private async openFilter(filter: Locator): Promise<void> {
+    const toggle = filter.locator(this.s.listing.filterItemToggle).first();
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
   }
 
   /** Open filter dropdowns overlay the "reset all" button and the listing. */
   private async closeFilterDropdowns(): Promise<void> {
-    const open = this.$(`${this.s.listing.filterItemToggle}[aria-expanded="true"]`).locator('visible=true');
+    // dropdowns only — themes with a collapsible filter sidebar keep their sections open
+    const open = this.$(`${this.s.listing.filterItemToggle}[aria-expanded="true"]:not([data-bs-toggle="collapse"])`).locator('visible=true');
     for (const toggle of await open.all()) await toggle.click();
   }
 
@@ -102,10 +119,11 @@ export class ListingPage extends BasePage {
   async applyMultiSelectFilter(filter: Locator, optionIndex = 0): Promise<string> {
     await this.ensureFilterPanelVisible();
     const target = filter.locator('visible=true').first();
-    await target.locator(this.s.listing.filterItemToggle).first().click();
+    await this.openFilter(target);
     const option = target.locator(this.s.listing.filterOption).nth(optionIndex);
     const label = (await option.innerText()).trim();
-    await this.reloadListing(() => option.locator('input').check({ force: true }));
+    // click, not check(): themes that reload the whole page on a filter change detach the checkbox at once
+    await this.reloadListing(() => option.locator('input').click({ force: true }));
     await this.closeFilterDropdowns();
     return label;
   }
@@ -113,7 +131,7 @@ export class ListingPage extends BasePage {
   async applyPriceFilter(min?: number, max?: number): Promise<void> {
     await this.ensureFilterPanelVisible();
     const price = this.$(this.s.listing.filterPrice).locator('visible=true').first();
-    await price.locator(this.s.listing.filterItemToggle).first().click();
+    await this.openFilter(price);
     await this.reloadListing(async () => {
       if (min !== undefined) await price.locator('input[name="min-price"]').fill(String(min));
       if (max !== undefined) await price.locator('input[name="max-price"]').fill(String(max));

@@ -212,6 +212,13 @@ export interface ProjectConfig {
   /** Sample size of the catalog crawler (tests/storefront/catalog-crawl.spec.ts); defaults when unset. */
   crawl?: CrawlConfig;
 
+  /**
+   * How the setup records the cookie consent all tests start with (default: "only necessary", keeping
+   * cookie-preference + cookie-config-hash). For shops whose "only necessary" button is broken or whose
+   * consent lives in their own cookies: click "accept all" and keep the cookies matching `keep`.
+   */
+  consentRecording?: { button: 'acceptAll'; keep: RegExp };
+
   /** Responsive layout suite (tests/storefront/responsive-layout.spec.ts); works with the defaults when unset. */
   layout?: LayoutTestConfig;
 }
