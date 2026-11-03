@@ -15,6 +15,9 @@ test.describe('Cookie consent', () => {
     const cookies = await context.cookies();
     expect(cookies.find((c) => c.name === 'cookie-preference')?.value).toBe('1');
 
+    // Shopware writes cookie-config-hash a moment after the click — reloading before that brings the banner back
+    // (not every shop sets it → give up after 5 s, the assertion below decides)
+    await expect.poll(async () => (await context.cookies()).some((c) => c.name === 'cookie-config-hash'), { timeout: 5_000 }).toBe(true).catch(() => undefined);
     await page.reload();
     await expect(cookieBanner.banner).toBeHidden();
   });
