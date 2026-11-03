@@ -123,6 +123,7 @@ const config: ProjectConfig = {
     { test: 'search suggest shows products while typing', reason: 'no header search; the inspiration search has no suggest dropdown' },
     { test: 'guest can add a product to the wishlist', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
     { test: 'wishlist page shows added product and allows removal', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
+    { test: 'plain HTTP is redirected to HTTPS', reason: 'http://dev.themallstreet.com gets no answer (Cloudflare 522 after ~40 s); browsers use https via HSTS — ignored on request (2026-11-03)' },
     // no real products yet, all prices 0.00 on purpose (2026-11-02) — remove once the catalog is live
     { test: 'sampled navigation categories with a product listing are not empty', reason: 'no real products yet — categories are empty on purpose' },
     { test: 'sampled products have a price above zero', reason: 'no real products yet — all prices are 0.00 on purpose' },
@@ -132,7 +133,6 @@ const config: ProjectConfig = {
   knownIssues: [
     { test: 'shows core product information', reason: 'PDP shows no product number and no tax notice (price "$98.00" without any tax hint); name, price, buy button, gallery and description are fine' },
     { test: 'mandatory legal pages are linked in the footer and load', reason: 'Terms & Conditions, Privacy policy and Returns & refund load but have only 13–15 words of content' },
-    { test: 'Product with "&" in its name', reason: 'name is double-escaped: title and h1 show "Little Kid &amp; Big Kid"' },
     { test: 'search by product number finds the product (full and partial)', reason: 'full product number is found, a partial one ("PTE70393") returns no results' },
   ],
 

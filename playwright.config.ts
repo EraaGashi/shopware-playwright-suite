@@ -36,9 +36,10 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
 
+  // redact-secrets must stay LAST: it scrubs secrets from the files the reporters before it have written
   reporter: isCI
-    ? [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'test-results/junit.xml' }]]
-    : [['list'], ['html', { open: 'on-failure' }]],
+    ? [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'test-results/junit.xml' }], ['./src/reporters/redact-secrets.ts']]
+    : [['list'], ['html', { open: 'on-failure' }], ['./src/reporters/redact-secrets.ts']],
 
   metadata: { project: cfg.name, baseURL: cfg.baseURL },
 

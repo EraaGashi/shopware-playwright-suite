@@ -142,6 +142,10 @@ The suite works without API credentials, but is faster and cleans up after itsel
 hosting team for a WAF rule that skips challenges when a secret header is present, and set the same secret as
 `E2E_HEADER_VALUE` (header name `E2E_HEADER_NAME`, default `x-e2e-bypass`). The suite then sends it with every
 browser and API request to the shop's own host — never to third parties (payment, reviews, trackers).
+Playwright writes headers and typed values in clear text into call logs, traces and the HTML report; the
+last reporter (`src/reporters/redact-secrets.ts`) replaces the values of `E2E_HEADER_VALUE`, `HTTP_PASSWORD`,
+`ADMIN_CLIENT_SECRET`, `ADMIN_PASSWORD`, `TEST_CUSTOMER_PASSWORD` and `SW_ACCESS_KEY` with `[REDACTED]` in every
+artifact after the run. Older folders: `npx tsx src/reporters/redact-secrets.ts`. Console output is not covered.
 
 1. **Admin API** — recommended: create an *Integration* in the admin
    (*Settings → System → Integrations*, with admin rights) → `ADMIN_CLIENT_ID` / `ADMIN_CLIENT_SECRET`.

@@ -27,6 +27,12 @@ test.describe('Wishlist', () => {
     await auth.open();
     await auth.loginAndExpectSuccess(customer.email, customer.password);
     await page.goto(cfg.routes.wishlist);
-    await expect(page.locator(cfg.selectors.wishlist.productBox).filter({ hasText: cfg.testData.simpleProduct.name })).toBeVisible();
+    // the wishlist listing only (no recommendation sliders), matched by URL: other variants share the name
+    const p = cfg.testData.simpleProduct;
+    const item = page
+      .locator(cfg.selectors.wishlist.page)
+      .locator(cfg.selectors.wishlist.productBox)
+      .filter({ has: page.locator(`a[href$="${p.path}"]`) });
+    await expect(item).toBeVisible();
   });
 });
