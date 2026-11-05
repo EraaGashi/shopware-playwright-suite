@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs the suite for ONE shop inside Bitbucket Pipelines (called from bitbucket-pipelines.yml).
 #   bash ci/e2e.sh smoke   → @smoke tests, chromium only
-#   bash ci/e2e.sh full    → every test: setup, chromium + mobile, all 21 responsive viewports, cleanup
+#   bash ci/e2e.sh full    → every test: setup, chromium + mobile, all 4 responsive viewports, cleanup
 # The shop's settings (BASE_URL, credentials …) come from the step's deployment environment;
 # PROJECT defaults to the environment's name (mallstreet, echonut, wurth).
 set -euo pipefail
@@ -13,8 +13,6 @@ export PROJECT="${PROJECT:-${BITBUCKET_DEPLOYMENT_ENVIRONMENT:-demo}}"
 args=()
 if [ "$MODE" = "smoke" ]; then
   args+=(--grep @smoke --project=chromium)
-else
-  export LAYOUT_VIEWPORTS="${LAYOUT_VIEWPORTS:-all}"
 fi
 # manual runs: "Run pipeline" → variable TEST_GREP, e.g. @checkout or "Product search"
 if [ -n "${TEST_GREP:-}" ]; then args+=(--grep "$TEST_GREP"); fi

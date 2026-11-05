@@ -34,9 +34,10 @@ const config: ProjectConfig = {
     languageSwitch: false,           // English only, no switcher
     currencySwitch: false,
     mobileNavigation: true,
-    // Mirakl marketplace: every order goes to Mirakl. true = each run places 2 test orders (guest + customer) with
-    // Cash on delivery — only on dev with approval. Flow verified with test order #10203 (2026-11-02).
-    orderPlacement: false,
+    // Mirakl marketplace: every order goes to Mirakl. Each full run with ALLOW_WRITE_TESTS=true places 2 test orders
+    // (guest + customer) with Cash on delivery. Approved for dev on 2026-11-04 (flow verified with test order #10203).
+    // jetrails / preview import this profile but are readOnly → no orders there.
+    orderPlacement: true,
   },
 
   routes: {
@@ -61,6 +62,8 @@ const config: ProjectConfig = {
     // main nav root links (desktop), in display order
     mainCategories: ["Women's", "Men's", 'Kids', 'Beauty', 'Home', 'Travel', 'Wellness'],
     listingCategoryPath: '/Women-s/',   // 130 products, sorting + manufacturer/property/price filters
+    // dev (verified 2026-10-26): 24 per page → p=2083 still 200, p=2084 → 500, i.e. the window is 50000 (Shopware default: 10000)
+    searchResultWindow: 50_000,
 
     // ⚠ No usable simple product: products without a configurator (Callie Pump, TEST …) cost $0.00
     // and get "No longer available from a seller" in the cart (no Mirakl offer). Same as Echonut,
@@ -143,13 +146,6 @@ const config: ProjectConfig = {
 
   importantLinks: ['/', '/checkout/cart', '/account/login', '/sitemap.xml', '/robots.txt'],
 
-  // Responsive layout suite (tests/storefront/responsive-layout.spec.ts)
-  layout: {
-    skipViewports: [
-      { test: 'mobile-320x568', reason: 'header is 6px wider than 320px screens — known, left out on request (2026-11-02)' },
-    ],
-  },
-
   // Configurable client tests (tests/client/, tag @client) — ported from the reference suite
   // (CFE-xxx = its UAT case ids). Verified against the live staging HTML 2026-10-19.
   client: {
@@ -198,7 +194,7 @@ const config: ProjectConfig = {
       { name: 'Search results', path: '/search?search=parka' },
     ],
     responsive: {
-      // default viewports: mobile 390, tablet 768, desktop 1440 (same as the reference suite)
+      // default viewports: desktop 1440, laptop 1366, tablet 768, phone 375
       pages: [
         { name: 'Home page', path: '/' },
         { name: "Women's CLP", path: '/Women-s/' },

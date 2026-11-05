@@ -157,9 +157,16 @@ export class ProductPage extends BasePage {
 
   /** Guests may first have to accept the wishlist cookie in an off-canvas; then the click is repeated. */
   async addToWishlist(): Promise<void> {
+    // Shopware marks the heart "product-wishlist-loading" until its script has loaded the wishlist — a click before that is lost
+    await expect(this.wishlistButton).not.toHaveClass(/product-wishlist-loading/, { timeout: 15_000 }).catch(() => undefined);
+    // guests without the wishlist cookie get a consent off-canvas first — loaded by request, slow shops need longer than 3 s
+    const consentRequested = this.page
+      .waitForRequest((r) => r.url().includes('/cookie/consent-offcanvas'), { timeout: 3_000 })
+      .then(() => true, () => false);
     await this.wishlistButton.click();
     const accept = this.$(this.s.product.wishlistConsentAccept).first();
-    const consentShown = await accept.waitFor({ state: 'visible', timeout: 3_000 }).then(() => true, () => false);
+    const timeout = (await consentRequested) ? 15_000 : 3_000;
+    const consentShown = await accept.waitFor({ state: 'visible', timeout }).then(() => true, () => false);
     if (!consentShown) return;
     await accept.click();
     await expect(accept).toBeHidden();

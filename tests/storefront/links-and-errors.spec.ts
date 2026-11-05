@@ -19,6 +19,7 @@ test.describe('Important links & redirects', () => {
   }
 
   test('header and footer links on the homepage are not broken', async ({ page, request, cfg }) => {
+    test.slow(); // up to 60 requests one after another — slow staging servers need the extra time
     await page.goto(cfg.routes.home);
     const hrefs = await page
       .locator(`${cfg.selectors.header.root} a[href], ${cfg.selectors.footer.root} a[href]`)
@@ -58,8 +59,28 @@ test.describe('Error handling', () => {
   });
 
   test('invalid listing parameters do not crash the page', async ({ page, cfg }) => {
-    const res = await page.goto(`${cfg.testData.listingCategoryPath}?order=invalid&p=99999&manufacturer=xyz`);
-    expect(res?.status()).toBeLessThan(500);
+    // risk: hand-edited / outdated links with malformed parameters → 500 instead of a usable page.
+    // One parameter per request, so a failure names the culprit. Page numbers that are valid but too
+    // large are covered by "pages beyond the real end of the listing" (listing.spec) — not repeated here.
+    const path = cfg.testData.listingCategoryPath;
+    const cases: Array<{ query: string; listingShown: boolean }> = [
+      { query: 'order=invalid', listingShown: true },        // unknown sorting → falls back to the default order
+      { query: 'manufacturer=xyz', listingShown: true },     // not a manufacturer id
+      { query: 'properties=xyz', listingShown: true },       // not a property option id
+      { query: 'min-price=abc&max-price=-5', listingShown: true },
+      { query: 'p=abc', listingShown: false },              // non-numeric page (a 4xx answer is fine)
+      { query: 'p=0', listingShown: true },
+      { query: 'p=-1', listingShown: true },
+    ];
+    for (const { query, listingShown } of cases) {
+      await test.step(`?${query}`, async () => {
+        const res = await page.goto(`${path}?${query}`);
+        expect.soft(res?.status(), `?${query} on ${path}`).toBeLessThan(500);
+        if (listingShown && (res?.status() ?? 500) < 400) {
+          await expect.soft(page.locator(cfg.selectors.listing.root).first(), `?${query}: listing not rendered`).toBeAttached();
+        }
+      });
+    }
   });
 
   test('POST to add-to-cart with invalid product does not 500', async ({ page, cfg }) => {

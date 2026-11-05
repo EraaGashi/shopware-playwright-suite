@@ -51,8 +51,12 @@ export function loadConfig(): ResolvedConfig {
   const httpUser = str(process.env.HTTP_USERNAME);
   const httpPass = str(process.env.HTTP_PASSWORD);
 
+  // readOnly profiles (production): no customers, no account changes, no orders, no cleanup — .env can't override
+  const readOnly = project.readOnly === true;
+
   cached = {
     ...project,
+    features: readOnly ? { ...project.features, orderPlacement: false } : project.features,
     baseURL,
     selectors,
     env: {
@@ -65,10 +69,10 @@ export function loadConfig(): ResolvedConfig {
       },
       accessKey: str(process.env.SW_ACCESS_KEY),
       testCustomer:
-        testCustomerEmail && testCustomerPassword ? { email: testCustomerEmail, password: testCustomerPassword } : undefined,
+        !readOnly && testCustomerEmail && testCustomerPassword ? { email: testCustomerEmail, password: testCustomerPassword } : undefined,
       bypassHeader: bypassValue ? { name: str(process.env.E2E_HEADER_NAME) ?? 'x-e2e-bypass', value: bypassValue } : undefined,
-      allowWriteTests: bool(process.env.ALLOW_WRITE_TESTS, true),
-      cleanupTestData: bool(process.env.CLEANUP_TEST_DATA, true),
+      allowWriteTests: !readOnly && bool(process.env.ALLOW_WRITE_TESTS, true),
+      cleanupTestData: !readOnly && bool(process.env.CLEANUP_TEST_DATA, true),
     },
   };
   return cached;

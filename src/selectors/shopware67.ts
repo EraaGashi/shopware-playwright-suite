@@ -98,6 +98,8 @@ export const shopware67Selectors = {
     filterPriceMax: '.filter-range input[name="max-price"]',
     activeFilterContainer: '.filter-panel-active-container',
     activeFilter: '.filter-active',
+    /** themes where only a "×" inside the chip removes the filter ('' = click the chip itself) */
+    activeFilterRemove: '',
     resetAllFilters: '.filter-reset-all',
     emptyResult: '.alert-info',
   },
@@ -168,6 +170,8 @@ export const shopware67Selectors = {
     checkoutButton: '.checkout-aside-action .begin-checkout-btn, a.begin-checkout-btn',
     promotionInput: 'form.cart-add-promotion input[name="code"]',
     promotionSubmit: '.checkout-aside-add-promotion-button',
+    /** themes that hide the promotion field behind a "Discount code" toggle ('' = always visible) */
+    promotionReveal: '',
     empty: '.checkout .alert-info',
     itemCounter: '.cart-main-header-item-counter',
   },

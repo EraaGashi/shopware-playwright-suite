@@ -9,7 +9,8 @@ test.describe('Mobile / responsive', { tag: '@mobile-only' }, () => {
     skipUnless(cfg.features.mobileNavigation, 'mobileNavigation');
     await page.goto(cfg.routes.home);
     const oc = await navigation.openMobileMenu();
-    const link = oc.locator('a').filter({ hasText: new RegExp(cfg.testData.mainCategories[1] ?? cfg.testData.mainCategories[0], 'i') }).first();
+    // visible links only: collapsed sub-menus may hold a longer name with the same word ("Miniatures Games")
+    const link = oc.locator('a').locator('visible=true').filter({ hasText: new RegExp(cfg.testData.mainCategories[1] ?? cfg.testData.mainCategories[0], 'i') }).first();
     await expect(link).toBeVisible();
   });
 

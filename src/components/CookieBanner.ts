@@ -54,10 +54,21 @@ export class CookieBanner extends BasePage {
     if (rec?.button === 'acceptAll') await this.$(this.s.cookie.acceptAll).first().click();
     else await this.acceptOnlyNecessary();
     await this.banner.first().waitFor({ state: 'hidden' });
-    const consent = async () => (await this.page.context().cookies()).filter((c) => keep.test(c.name));
+    // the shop's own cookies only (not e.g. Google's reCAPTCHA token cookie)
+    const host = new URL(baseURL).hostname;
+    const consent = async () => (await this.page.context().cookies()).filter((c) => keep.test(c.name) && host.endsWith(c.domain.replace(/^\./, '')));
     // cookie-config-hash is written a moment after the click (not every shop sets it → give up after 5 s)
     if (!rec) await expect.poll(async () => (await consent()).length, { timeout: 5_000 }).toBe(2).catch(() => undefined);
-    else await this.page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined);
+    else {
+      // custom cookie list: written over a few moments → wait until it stops growing (max 8 s)
+      let last = -1;
+      for (let i = 0; i < 8; i++) {
+        const n = (await consent()).length;
+        if (n > 0 && n === last) break;
+        last = n;
+        await this.page.waitForTimeout(1_000);
+      }
+    }
     const cookies = await consent();
     fs.mkdirSync(path.dirname(consentFile(baseURL)), { recursive: true });
     fs.writeFileSync(consentFile(baseURL), JSON.stringify(cookies, null, 2));

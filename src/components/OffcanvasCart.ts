@@ -23,7 +23,10 @@ export class OffcanvasCart extends BasePage {
    */
   private async waitUntilReady(name: string): Promise<void> {
     await expect(this.root).not.toHaveClass(/showing/);
+    await expect(this.lineItem(name)).toBeVisible();
     const selector = this.lineItem(name).locator('[data-quantity-selector]').first();
+    // themes without a quantity field in the off-canvas (quantity as plain text): nothing else to wait for
+    if (!(await selector.count())) return;
     await expect(selector).toBeVisible();
     await selector.evaluate((el) =>
       new Promise<void>((resolve) => {

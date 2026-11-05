@@ -1,4 +1,5 @@
 import { test, expect } from '../../src/fixtures';
+import { DEFAULT_PAGE_SIZE, DEFAULT_SEARCH_RESULT_WINDOW, pagesBeyondEnd, withPage } from '../../src/utils/paging';
 
 test.describe('Product search', () => {
   test('search via header returns matching products', { tag: ['@smoke', '@mobile'] }, async ({ page, cfg, header, listing }) => {
@@ -14,7 +15,9 @@ test.describe('Product search', () => {
   test('results contain the search term', async ({ page, cfg, listing }) => {
     await page.goto(`${cfg.routes.search}?search=${encodeURIComponent(cfg.testData.searchTerm)}`);
     const names = await listing.productNames();
-    const hits = names.filter((n) => n.toLowerCase().includes(cfg.testData.searchTerm.toLowerCase()));
+    // case and accents don't matter ("doreza" finds "Dorëza")
+    const plain = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+    const hits = names.filter((n) => plain(n).includes(plain(cfg.testData.searchTerm)));
     expect(hits.length, `names: ${names.join(' | ')}`).toBeGreaterThan(0);
   });
 
@@ -81,10 +84,18 @@ test.describe('Product search', () => {
     expect(await listing.productBoxes.count(), 'number of results changed by sorting').toBe(before);
   });
 
-  test('very deep page numbers in search do not cause a server error', async ({ page, cfg }) => {
-    // risk: same result-window limit as on categories, reachable with any search term
-    const res = await page.goto(`${cfg.routes.search}?search=${encodeURIComponent(cfg.testData.searchTerm)}&p=99999`);
-    expect(res?.status()).toBeLessThan(500);
+  test('pages beyond the real end of the search results do not cause a server error', async ({ page, cfg, listing }) => {
+    // risk: same limits as on categories, reachable with any search term
+    const path = `${cfg.routes.search}?search=${encodeURIComponent(cfg.testData.searchTerm)}`;
+    await page.goto(path);
+    const { lastPage, productsOnPage, pageSize = DEFAULT_PAGE_SIZE } = await listing.paginationInfo();
+    expect(productsOnPage, `no results for "${cfg.testData.searchTerm}"`).toBeGreaterThan(0);
+    for (const { p, label } of pagesBeyondEnd(lastPage, pageSize, cfg.testData.searchResultWindow ?? DEFAULT_SEARCH_RESULT_WINDOW)) {
+      await test.step(label, async () => {
+        const res = await page.goto(withPage(path, p));
+        expect.soft(res?.status(), `${label} on ${path}`).toBeLessThan(500);
+      });
+    }
   });
 
   test('handles special characters safely', async ({ page, cfg }) => {

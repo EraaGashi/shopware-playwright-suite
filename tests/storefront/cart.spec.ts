@@ -176,7 +176,9 @@ test.describe('Cart', () => {
   test('cart persists across page navigation', async ({ page, cart, cartHelper, header, cfg }) => {
     await cartHelper.add(cfg.testData.simpleProduct, 1);
     await page.goto(cfg.testData.listingCategoryPath);
-    await expect.poll(() => header.cartTotal()).toBeGreaterThan(0);
+    // B2B shops hide prices from guests → the item count in the header shows the cart instead
+    if (cfg.features.guestPrices === false) await expect.poll(() => header.cartBadgeCount()).toBeGreaterThan(0);
+    else await expect.poll(() => header.cartTotal()).toBeGreaterThan(0);
     await cart.open();
     await expect(cart.lineItems).toHaveCount(1);
   });

@@ -94,7 +94,7 @@ const config: ProjectConfig = {
       // CHANGED 2026-09-25: friendly URL 404s → canonical /detail/{id} (found via search for 0899970911)
       path: '/detail/019c51709992721d91c4b715ff8b2ab7',
       productNumber: '0899970911',
-      name: 'Dorëza mbrojtëse-Nitril-portokalli-M',
+      name: 'Dorëza mbrojtëse nitril portokalli',   // CHANGED 2026-11-04 — cart label "Dorëza mbrojtëse nitril portokalli, M"
       optionGroups: ['Madhësia'], // "Size" in Albanian
     },
 
@@ -164,10 +164,20 @@ const config: ProjectConfig = {
   // Confirmed shop bugs (2026-09-25) — tests stay "expected to fail" until fixed, then remove the entry.
   // Not bugs (decided/verified 2026-10-05) → skipped with the reason.
   skipTests: [
+    { test: 'update quantity in off-canvas cart', reason: 'off-canvas cart shows the quantity as text ("Sasia: 1") — no quantity field (verified 2026-11-04)' },
+    { test: 'invalid promotion code is rejected', reason: 'guest cart has no promotion field (verified 2026-11-04) — only checkable with a logged-in B2B account' },
     { test: 'has a meta description', reason: 'staging product data has no meta description; production has one for the same product (verified 2026-10-05)' },
   ],
 
+  // Responsive layout suite: the desktop navigation stays down to 768px (burger menu only below)
+  layout: {
+    mobileNavBelow: 768,
+  },
+
   knownIssues: [
+    // same debug-mode bug as "unknown URL shows a 404 page" below — confirmed again 2026-11-04
+    { test: 'unknown product URL returns 404', reason: 'staging runs in debug mode: unknown product URLs show the Symfony "No route found" exception page' },
+    { test: 'error pages do not reveal debug information', reason: 'staging runs in debug mode: 404 / bad-parameter pages show Symfony exception pages with stack traces' },
     {
       test: 'unknown URL shows a 404 page',
       reason: 'staging runs in debug mode: unknown URLs return the Symfony "No route found" debug page instead of the shop 404 page (Store API errors also expose full server stack traces)',
@@ -204,6 +214,9 @@ const config: ProjectConfig = {
       // accountButton default already matches (.account-menu-btn is real),
       // but note: on mobile it's hidden behind #accountWidget-mobile vs.
       // #accountWidget-desktop — same duplicate-DOM situation as elsewhere.
+    },
+    navigation: {
+      flyoutLink: '.navigation-flyout-categories__link',   // CHANGED 2026-11-04 — sub-category links in the flyout
     },
     listing: {
       // out-of-stock marker (.product-action--out-of-stock, an intentionally

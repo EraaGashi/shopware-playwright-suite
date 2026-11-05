@@ -66,7 +66,8 @@ export class Header extends BasePage {
 
   async openAccountMenu(): Promise<Locator> {
     await this.accountButton.click();
-    const dd = this.$(this.s.header.accountDropdown).first();
+    // themes with separate desktop / mobile account widgets: the dropdown of the visible one
+    const dd = this.$(this.s.header.accountDropdown).locator('visible=true').first();
     await expect(dd).toBeVisible();
     return dd;
   }

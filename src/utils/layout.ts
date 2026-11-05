@@ -136,16 +136,47 @@ export async function auditLayout(page: Page, opts: AuditOptions = {}): Promise<
         if (fullyOff && (fixed || r.right <= 1 || pageClips)) continue;
         outside.add(el);
       }
+      /** text, images or controls of the element really lie beyond the screen edge (not just an empty box margin) */
+      const contentOutside = (el: Element) => {
+        const out = (r: DOMRect) => r.width > 1 && r.height > 1 && (r.left < -1 || r.right > vw + 1);
+        const range = document.createRange();
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.textContent!.trim()) continue;
+          range.selectNodeContents(n);
+          if (Array.from(range.getClientRects()).some(out)) return true;
+        }
+        const media = [el, ...Array.from(el.querySelectorAll('img, video, iframe, canvas, svg, input, select, textarea, button'))];
+        return media.some((m) => (m === el ? !el.children.length : true) && isVisible(m) && out(m.getBoundingClientRect()));
+      };
       // report the outermost offenders (the cause), not every child inside them
       for (const el of outside) {
         if (el.parentElement && outside.has(el.parentElement)) continue;
         const r = el.getBoundingClientRect();
+        // page does not scroll (or the element only sticks out on the left, which never scrolls):
+        // only report what a visitor actually loses at the edge
+        if ((!(overflowX > 0 && !pageClips) || r.right <= vw + 1) && !contentOutside(el)) continue;
         const by = r.right > vw + 1 ? `right edge at ${px(r.right)}, ${px(r.right - vw)} beyond the ${vw}px screen` : `left edge at ${px(r.left)}`;
         const w = getComputedStyle(el).width;
         add(overflowX > 0 && !pageClips ? 'overflow' : 'cut-off', el, `${by} (width ${w}${r.width > vw ? ', wider than the screen' : ''})`);
       }
 
       // ---- text cut off inside its own box ----
+      /** the rendered letters (not just the line height) leave the element's box */
+      const lettersOutside = (el: Element) => {
+        const box = el.getBoundingClientRect();
+        const range = document.createRange();
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.textContent!.trim()) continue;
+          range.selectNodeContents(n);
+          for (const r of Array.from(range.getClientRects())) {
+            if (r.width === 0 || r.height === 0) continue;
+            if (r.left < box.left - 1 || r.right > box.right + 1 || r.top < box.top - 1 || r.bottom > box.bottom + 1) return true;
+          }
+        }
+        return false;
+      };
       for (const el of visible) {
         if (['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'IMG', 'SVG', 'svg', 'VIDEO', 'IFRAME', 'CANVAS'].includes(el.tagName)) continue;
         const ownText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent!.trim().length > 1);
@@ -156,6 +187,10 @@ export async function auditLayout(page: Page, opts: AuditOptions = {}): Promise<
         const clamp = cs.getPropertyValue('-webkit-line-clamp');
         const clipsY = ['hidden', 'clip'].includes(cs.overflowY) && h.scrollHeight > h.clientHeight + 2 && (!clamp || clamp === 'none');
         if (h.clientWidth === 0 || h.clientHeight === 0) continue;
+        // a line height larger than the box overflows on paper, but the letters may still fit:
+        // horizontally the letters must leave the box, vertically at least half a line must be hidden
+        if (clipsX && !lettersOutside(el)) continue;
+        if (!clipsX && clipsY && h.scrollHeight - h.clientHeight < parseFloat(cs.fontSize) * 0.5) continue;
         if (clipsX) add('clipped-text', el, `text needs ${px(h.scrollWidth)} but the box is ${px(h.clientWidth)} wide (overflow: ${cs.overflowX})`);
         else if (clipsY) add('clipped-text', el, `text needs ${px(h.scrollHeight)} but the box is ${px(h.clientHeight)} high (overflow: ${cs.overflowY})`);
       }
@@ -176,7 +211,14 @@ export async function auditLayout(page: Page, opts: AuditOptions = {}): Promise<
         return rt - l > 1 && b - t > 1 ? { l, t, rt, b } : null;
       };
       const related = (a: Element, b: Element) =>
-        a.contains(b) || b.contains(a) || ((a as HTMLInputElement).labels && Array.from((a as HTMLInputElement).labels!).some((l) => l.contains(b)));
+        a.contains(b) || b.contains(a) || ((a as HTMLInputElement).labels && Array.from((a as HTMLInputElement).labels!).some((l) => l.contains(b))) ||
+        // the same link twice (e.g. a banner and its "Discover now" button) — clicking either goes to the same place
+        (!!a.closest('a[href]') && a.closest('a[href]')!.getAttribute('href') === b.closest('a[href]')?.getAttribute('href'));
+      /** fixed / sticky bars (sticky add-to-cart, headers) overlap content by design — it is reachable by scrolling */
+      const inBar = (e: Element | null) => {
+        for (let a = e; a && a !== document.body; a = a.parentElement) if (/fixed|sticky/.test(getComputedStyle(a).position)) return true;
+        return false;
+      };
       for (const el of controls) {
         const s = shownRect(el);
         if (!s) continue;
@@ -184,7 +226,7 @@ export async function auditLayout(page: Page, opts: AuditOptions = {}): Promise<
         const cy = (s.t + s.b) / 2;
         if (cx < 0 || cy < 0 || cx > vw || cy > vh) continue; // only what is on screen at the top of the page
         const hit = document.elementFromPoint(cx, cy);
-        if (!hit || related(el, hit) || isIgnored(hit)) continue;
+        if (!hit || related(el, hit) || isIgnored(hit) || (inBar(hit) && !inBar(el))) continue;
         add('covered', el, `centre (${px(cx)}, ${px(cy)}) is covered by ${describe(hit)}`);
       }
 

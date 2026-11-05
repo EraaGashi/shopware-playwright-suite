@@ -165,7 +165,12 @@ export class CartPage extends BasePage {
   }
 
   async applyPromotion(code: string): Promise<void> {
-    await this.$(this.s.cart.promotionInput).first().fill(code);
+    const input = this.$(this.s.cart.promotionInput).first();
+    if (this.s.cart.promotionReveal && !(await input.isVisible())) {
+      await this.$(this.s.cart.promotionReveal).locator('visible=true').first().click();
+      await expect(input).toBeVisible();
+    }
+    await input.fill(code);
     await this.waitForXhr('/checkout/promotion/add', () => this.$(this.s.cart.promotionSubmit).first().click());
   }
 

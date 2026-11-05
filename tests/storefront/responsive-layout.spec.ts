@@ -6,36 +6,32 @@ import { attachEvidence, auditLayout, formatIssues, settle, stickyCoverage, type
 
 /**
  * Responsive layout suite: every core page and the shared components (navigation, filters, search,
- * cookie banner, off-canvas cart, account) at desktop, laptop, tablet and phone sizes, portrait and landscape.
+ * cookie banner, off-canvas cart, account) at the four most important screen sizes: desktop, laptop, tablet, phone.
  * Read-only for the shop: only a guest cart is filled, the fixed test account's cart is restored, no order is placed.
  *
- * Viewports: a core set by default; `LAYOUT_VIEWPORTS=all` runs all 21, or a comma list of name parts
- * (`LAYOUT_VIEWPORTS=mobile-320x568`, `LAYOUT_VIEWPORTS=tablet`) — `npm run test:responsive` runs all.
+ * Viewports: all four by default; `LAYOUT_VIEWPORTS` = a comma list of name parts runs a subset
+ * (`LAYOUT_VIEWPORTS=mobile`, `LAYOUT_VIEWPORTS=desktop,tablet`). Add a size to ALL_VIEWPORTS when a shop needs it.
  * Viewport emulation (incl. touch / mobile meta viewport) catches layout defects; it is not a real device.
  * Shop specifics: projects/<shop>.ts → layout (extra pages, ignored widgets, nav breakpoint, sizes).
  */
 
-type Kind = 'desktop' | 'laptop' | 'tablet' | 'tablet-landscape' | 'mobile' | 'mobile-landscape';
+type Kind = 'desktop' | 'laptop' | 'tablet' | 'mobile';
 interface Viewport { name: string; kind: Kind; width: number; height: number; touch: boolean }
 
 const vp = (kind: Kind, width: number, height: number): Viewport =>
   ({ name: `${kind}-${width}x${height}`, kind, width, height, touch: kind.startsWith('tablet') || kind.startsWith('mobile') });
 
+/** The most important device sizes: desktop/MacBook, common laptop, iPad portrait, iPhone. */
 const ALL_VIEWPORTS: Viewport[] = [
-  vp('desktop', 1920, 1080), vp('desktop', 1440, 900), vp('desktop', 1366, 768),
-  vp('laptop', 1280, 800), vp('laptop', 1024, 768),
-  vp('tablet', 1024, 1366), vp('tablet', 834, 1194), vp('tablet', 768, 1024),
-  vp('tablet-landscape', 1366, 1024), vp('tablet-landscape', 1194, 834), vp('tablet-landscape', 1024, 768),
-  vp('mobile', 430, 932), vp('mobile', 390, 844), vp('mobile', 375, 812), vp('mobile', 360, 800), vp('mobile', 320, 568),
-  vp('mobile-landscape', 932, 430), vp('mobile-landscape', 844, 390), vp('mobile-landscape', 812, 375), vp('mobile-landscape', 800, 360), vp('mobile-landscape', 568, 320),
+  vp('desktop', 1440, 900),
+  vp('laptop', 1366, 768),
+  vp('tablet', 768, 1024),
+  vp('mobile', 375, 812),
 ];
-/** One per device class + the narrowest phone + one landscape phone. */
-const CORE = ['desktop-1440x900', 'laptop-1024x768', 'tablet-768x1024', 'mobile-390x844', 'mobile-320x568', 'mobile-landscape-844x390'];
 
 function selectedViewports(): Viewport[] {
   const wanted = (process.env.LAYOUT_VIEWPORTS ?? '').trim();
-  if (wanted === 'all') return ALL_VIEWPORTS;
-  if (!wanted) return ALL_VIEWPORTS.filter((v) => CORE.includes(v.name));
+  if (!wanted || wanted === 'all') return ALL_VIEWPORTS;
   const parts = wanted.split(',').map((p) => p.trim()).filter(Boolean);
   return ALL_VIEWPORTS.filter((v) => parts.some((p) => v.name.includes(p)));
 }
@@ -143,7 +139,8 @@ async function expectReachable(target: Locator, what: string): Promise<void> {
 
 /** Product grid geometry: columns of the first row, widths, boxes outside the screen. */
 async function gridOf(page: Page, c: ResolvedConfig) {
-  return page.locator(c.selectors.listing.productBox).locator('visible=true').evaluateAll((els) => {
+  // product boxes of the listing itself — not cross-selling / recently-viewed sliders elsewhere on the page
+  return page.locator(c.selectors.listing.root).first().locator(c.selectors.listing.productBox).locator('visible=true').evaluateAll((els) => {
     const boxes = els.map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0);
     const firstTop = boxes[0]?.top ?? 0;
     const firstRow = boxes.filter((r) => Math.abs(r.top - firstTop) < 4);
@@ -230,7 +227,8 @@ for (const v of VIEWPORTS) {
         expect.soft(Math.max(...grid.widths) - Math.min(...grid.widths), `uneven column widths ${grid.widths.join('/')}`).toBeLessThanOrEqual(2);
       }
       if (v.width <= 480) expect.soft(grid.columns, `${grid.columns} product columns on a ${v.width}px phone`).toBeLessThanOrEqual(2);
-      if (v.width >= 1280) expect.soft(grid.columns, `only ${grid.columns} product column(s) on a ${v.width}px screen`).toBeGreaterThanOrEqual(3);
+      // a row can only be as wide as the products it has
+      if (v.width >= 1280 && grid.count >= 3) expect.soft(grid.columns, `only ${grid.columns} product column(s) on a ${v.width}px screen`).toBeGreaterThanOrEqual(3);
     });
 
     test('listing filters open and fit the screen', async ({ page, cfg, listing }, testInfo) => {

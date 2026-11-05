@@ -52,6 +52,7 @@ const config: ProjectConfig = {
   testData: {
     mainCategories: ['TODO Category 1', 'TODO Category 2'],
     listingCategoryPath: '/TODO-Category/',
+    // searchResultWindow: 10_000,   // only if the shop changed Elasticsearch max_result_window
     simpleProduct: { path: '/TODO-product/SW10000', productNumber: 'SW10000', name: 'TODO' },
     variantProduct: {
       path: '/TODO-variant-product/SW10001.1',

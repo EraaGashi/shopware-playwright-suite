@@ -90,7 +90,8 @@ const config: ProjectConfig = {
     shippingMethod: null,
     promotionCode: null,
     // Reviews.io in the "Product Reviews" tab instead of Shopware's review teaser
-    reviewWidget: { tab: 'a[id^="review-tab-"]', tabText: 'Product Reviews', root: '#reviews-io-polaris-modal-ReviewsWidget, [id^="reviews-io"]', writeButton: /write a review/i },
+    // the widget shows rating + reviews only — no "Write a review" button (checked 2026-11-04)
+    reviewWidget: { tab: 'a[id^="review-tab-"]', tabText: 'Product Reviews', root: '#reviews-io-polaris-modal-ReviewsWidget, [id^="reviews-io"]' },
   },
 
   // Not applicable for this shop (verified 2026-11-02) → skipped with the reason.
@@ -119,7 +120,9 @@ const config: ProjectConfig = {
 
   // third-party widgets left out of the layout checks: UserWay accessibility button, Klaviyo sign-up pop-up
   layout: {
-    ignore: ['.userway_p1, #userwayAccessibilityIcon, .uwy', '.needsclick.kl-private-reset-css-Xuajs1, [class*="kl-private"]'],
+    ignore: ['.userway_p1, #userwayAccessibilityIcon, .uwy', '.needsclick.kl-private-reset-css-Xuajs1, [class*="kl-private"]', '#launcher' /* Zendesk chat button */,
+      // product cards: the name link is stretched over the card; on real phones the buttons still work (manual check 2026-11-04)
+      '.product-box .product-name.stretched-link'],
   },
 
   redirects: [
@@ -150,6 +153,19 @@ const config: ProjectConfig = {
       tax: '',                                            // US prices: no tax notice on the PDP
       wishlistButton: '.pdp-wishlist .product-wishlist-btn',   // the first match is the hidden mobile copy
       delivery: '',                                       // the delivery-information block is rendered empty
+    },
+    header: {
+      // the account dropdown holds a login form instead of a "Log in" link
+      accountLoginLink: '.account-menu-login button[type="submit"]',
+    },
+    listing: {
+      // only the "×" inside a filter chip removes the filter
+      activeFilterRemove: '.filter-active-remove',
+    },
+    cart: {
+      // promotion field is collapsed behind "Discount code"
+      promotionReveal: 'button[aria-controls="discountCollapse"]',
+      promotionSubmit: 'form.cart-add-promotion button[type="submit"]',   // "Apply"
     },
     search: {
       emptyAlert: '.no-results-content',                  // "We're Sorry! We cannot find any products …"

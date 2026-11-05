@@ -184,8 +184,8 @@ test.describe('Product detail page', () => {
     await tab.click();
     const root = product.page.locator(widget!.root);
     await expect(root).toBeAttached();
-    // rendered by Bazaarvoice's external script — slower than the shop's own markup
-    await expect(root.getByRole('button', { name: widget!.writeButton }).first()).toBeVisible({ timeout: 30_000 });
+    // rendered by the widget's external script — slower than the shop's own markup
+    if (widget!.writeButton) await expect(root.getByRole('button', { name: widget!.writeButton }).first()).toBeVisible({ timeout: 30_000 });
   });
 
   test('unknown product URL returns 404', async ({ page, cfg }) => {

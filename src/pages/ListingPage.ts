@@ -17,6 +17,27 @@ export class ListingPage extends BasePage {
     return this.$(this.s.listing.pagination).first();
   }
 
+  /**
+   * Real paging limits of the current listing (open it on page 1 first): the last page number and
+   * the page size. Page jumps carry their number as `a.page-link[data-page]` (Shopware ≥ 6.6) or
+   * `input[name="p"]` (older themes); the "last" button holds the highest one. `pageSize` is only
+   * known when there is more than one page — a single page may hold fewer boxes than the limit.
+   */
+  async paginationInfo(): Promise<{ lastPage: number; productsOnPage: number; pageSize?: number }> {
+    const productsOnPage = await this.productBoxes.count();
+    if (!(await this.pagination.isVisible())) return { lastPage: 1, productsOnPage };
+    const pages = await this.$(this.s.listing.pagination)
+      .locator('[data-page], input[name="p"]')
+      .evaluateAll((els) =>
+        els
+          .map((el) => Number(el.getAttribute('data-page') ?? (el as HTMLInputElement).value))
+          .filter((n) => Number.isInteger(n) && n > 0),
+      );
+    if (pages.length === 0) throw new Error('Pagination is shown but no page numbers were found — check selectors.listing.pagination');
+    const lastPage = Math.max(...pages);
+    return { lastPage, productsOnPage, pageSize: lastPage > 1 ? productsOnPage : undefined };
+  }
+
   async open(path: string): Promise<void> {
     await this.goto(path);
     await expect(this.$(this.s.listing.root).first()).toBeVisible();
@@ -147,7 +168,9 @@ export class ListingPage extends BasePage {
   /** Removes one active filter via its chip. */
   async removeActiveFilter(index = 0): Promise<void> {
     await this.closeFilterDropdowns();
-    await this.reloadListing(() => this.activeFilters.locator('visible=true').nth(index).click());
+    const chip = this.activeFilters.locator('visible=true').nth(index);
+    const target = this.s.listing.activeFilterRemove ? chip.locator(this.s.listing.activeFilterRemove).first() : chip;
+    await this.reloadListing(() => target.click());
   }
 
   async resetAllFilters(): Promise<void> {

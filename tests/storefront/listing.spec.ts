@@ -1,6 +1,8 @@
 import { test, expect } from '../../src/fixtures';
 import { routeBypassHeader } from '../../src/utils/http';
 import { isSortedAsc, isSortedDesc, parsePrice } from '../../src/utils/price';
+import type { ListingPage } from '../../src/pages/ListingPage';
+import { DEFAULT_PAGE_SIZE, DEFAULT_SEARCH_RESULT_WINDOW, pagesBeyondEnd, withPage } from '../../src/utils/paging';
 
 test.describe('Product listing', () => {
   test.beforeEach(async ({ listing, cfg }) => {
@@ -103,14 +105,35 @@ test.describe('Listing consistency', () => {
 
   test('canonical ignores sorting and keeps a valid page URL', async ({ page, cfg }) => {
     // risk: every sort order / page indexed as its own page, or malformed canonical URLs ignored by search engines
-    const canonical = async () => (await page.locator('link[rel="canonical"]').first().getAttribute('href')) ?? '';
-    await page.goto(`${cfg.testData.listingCategoryPath}?order=price-asc`);
-    const sorted = await canonical();
-    expect(sorted, 'canonical of a sorted listing contains the sort parameter').not.toMatch(/[?&]order=/);
-    await page.goto(`${cfg.testData.listingCategoryPath}?p=2`);
-    const paged = await canonical();
-    expect(paged.split('?').length, `malformed canonical "${paged}"`).toBeLessThanOrEqual(2);
-    expect((paged.match(/[?&]p=/g) ?? []).length, `page parameter repeated in "${paged}"`).toBeLessThanOrEqual(1);
+    // expected (Shopware's own format): page 1 → the category URL without parameters, page n > 1 → "<category URL>?p=n"
+    const path = cfg.testData.listingCategoryPath;
+    const canonicalOf = async (query: string) => {
+      await page.goto(`${path}${query}`);
+      const links = page.locator('link[rel="canonical"]');
+      expect.soft(await links.count(), `${query || 'page 1'}: number of canonical tags`).toBe(1);
+      return (await links.first().getAttribute('href')) ?? '';
+    };
+    const base = await canonicalOf('');
+    expect(base, 'page 1 canonical carries parameters').not.toContain('?');
+
+    const sorted = await canonicalOf('?order=price-asc');
+    expect.soft(sorted, 'canonical of a sorted listing contains the sort parameter').not.toMatch(/[?&]order=/);
+    expect.soft(sorted, '?order=price-asc').toBe(base);
+
+    const firstPage = await canonicalOf('?p=1');
+    expect.soft(firstPage, '?p=1 must point to the category URL (page 1 indexed twice otherwise)').toBe(base);
+
+    // page 2 only exists when the category has more than one page
+    await page.goto(path);
+    const hasPage2 = await page.locator(cfg.selectors.listing.pagination).first().isVisible();
+    test.info().annotations.push({ type: 'canonical', description: hasPage2 ? 'checked pages 1 and 2' : 'category has one page — page 2 not checked' });
+    if (!hasPage2) return;
+    for (const query of ['?p=2', '?order=price-asc&p=2']) {
+      const paged = await canonicalOf(query);
+      expect.soft(paged.split('?').length, `${query}: malformed canonical "${paged}"`).toBeLessThanOrEqual(2);
+      expect.soft((paged.match(/[?&]p=/g) ?? []).length, `${query}: page parameter repeated in "${paged}"`).toBeLessThanOrEqual(1);
+      expect.soft(paged, query).toBe(`${base}?p=2`);
+    }
   });
 });
 
@@ -124,14 +147,16 @@ test.describe('Sorting', () => {
     for (const key of cfg.testData.expectedSortings) expect(options).toContain(key);
   });
 
-  test('sorts by price ascending', async ({ listing }) => {
+  test('sorts by price ascending', async ({ listing, cfg }) => {
+    test.skip(cfg.features.guestPrices === false, 'Guests see no prices');
     await listing.sortBy('price-asc');
     const prices = await listing.productPrices();
     expect(prices.length).toBeGreaterThan(1);
     expect(isSortedAsc(prices), `prices not ascending: ${prices.join(', ')}`).toBe(true);
   });
 
-  test('sorts by price descending', async ({ listing }) => {
+  test('sorts by price descending', async ({ listing, cfg }) => {
+    test.skip(cfg.features.guestPrices === false, 'Guests see no prices');
     await listing.sortBy('price-desc');
     const prices = await listing.productPrices();
     expect(isSortedDesc(prices), `prices not descending: ${prices.join(', ')}`).toBe(true);
@@ -152,15 +177,35 @@ test.describe('Sorting', () => {
     expect(Math.min(...page2), 'page 2 starts below the last price of page 1').toBeGreaterThanOrEqual(Math.max(...page1) - 0.01);
   });
 
-  test('very deep page numbers do not cause a server error', async ({ page, cfg }) => {
-    // risk: old/crawled links with a huge page number hit the search engine's result window → 500
-    for (const p of [9999, 99999]) {
-      const res = await page.goto(`${cfg.testData.listingCategoryPath}?p=${p}`);
-      expect.soft(res?.status(), `?p=${p} on the category`).toBeLessThan(500);
+  test('pages beyond the real end of the listing do not cause a server error', async ({ page, listing, cfg }) => {
+    // risk: old/crawled links past the last page, or past the search engine's result window → 500
+    const path = cfg.testData.listingCategoryPath;
+    const { lastPage, productsOnPage, pageSize = DEFAULT_PAGE_SIZE } = await listing.paginationInfo();
+    expect(productsOnPage, 'category shows no products').toBeGreaterThan(0);
+    const firstPage = await listing.productHrefs();
+
+    await test.step(`last real page (p=${lastPage}) lists its own products`, async () => {
+      const res = await page.goto(withPage(path, lastPage));
+      expect(res?.status()).toBe(200);
+      const count = await listing.productBoxes.count();
+      expect(count).toBeGreaterThan(0);
+      expect(count).toBeLessThanOrEqual(pageSize);
+      // proves `p` is honoured — out-of-range pages fall back to page 1, which would look the same
+      if (lastPage > 1) expect(await listing.productHrefs(), 'last page shows the products of page 1').not.toEqual(firstPage);
+    });
+
+    for (const { p, label } of pagesBeyondEnd(lastPage, pageSize, cfg.testData.searchResultWindow ?? DEFAULT_SEARCH_RESULT_WINDOW)) {
+      await test.step(label, async () => {
+        const res = await page.goto(withPage(path, p));
+        expect.soft(res?.status(), `${label} on ${path}`).toBeLessThan(500);
+      });
     }
   });
 
-  test('sorts by name A-Z and Z-A', async ({ listing }) => {
+  test('sorts by name A-Z and Z-A', async ({ listing, page, cfg }) => {
+    // only the listing's own products (sliders elsewhere on the page are not sorted)
+    const own = page.locator(cfg.selectors.listing.root).first().locator(cfg.selectors.listing.productBox);
+    test.skip((await own.count()) < 2, 'Category lists fewer than 2 products — nothing to sort');
     await listing.sortBy('name-asc');
     const asc = await listing.productNames();
     await listing.sortBy('name-desc');
@@ -176,6 +221,11 @@ test.describe('Filters', () => {
     await listing.open(cfg.testData.listingCategoryPath);
   });
 
+  /** Tests built on the manufacturer filter skip in categories / shops without one. */
+  async function skipWithoutManufacturerFilter(listing: ListingPage): Promise<void> {
+    test.skip(!(await listing.filterOfType('manufacturer').count()), 'No manufacturer filter in this category');
+  }
+
   test('expected filter types are available', { tag: '@smoke' }, async ({ listing, cfg }) => {
     await listing.ensureFilterPanelVisible();
     for (const type of cfg.testData.expectedFilterTypes) {
@@ -184,6 +234,7 @@ test.describe('Filters', () => {
   });
 
   test('manufacturer filter narrows results and can be reset', { tag: '@mobile' }, async ({ page, listing }) => {
+    await skipWithoutManufacturerFilter(listing);
     const before = await listing.productBoxes.count();
     const label = await listing.applyMultiSelectFilter(listing.filterOfType('manufacturer'));
     await expect(page).toHaveURL(/manufacturer=/);
@@ -195,6 +246,7 @@ test.describe('Filters', () => {
   });
 
   test('applying a filter keeps the chosen sorting', async ({ page, listing, cfg }) => {
+    await skipWithoutManufacturerFilter(listing);
     // risk: filter request drops the order parameter → listing silently falls back to the default sorting
     await listing.sortBy('price-desc');
     await listing.applyMultiSelectFilter(listing.filterOfType('manufacturer'));
@@ -208,6 +260,7 @@ test.describe('Filters', () => {
   });
 
   test('browser back removes the filter again', async ({ page, listing }) => {
+    await skipWithoutManufacturerFilter(listing);
     // risk: history navigation shows the filtered products under an unfiltered URL (or the reverse)
     const before = await listing.productNames();
     await listing.applyMultiSelectFilter(listing.filterOfType('manufacturer'));
@@ -259,6 +312,7 @@ test.describe('Filters', () => {
   });
 
   test('filter and sorting are restored after a reload', async ({ page, listing }) => {
+    await skipWithoutManufacturerFilter(listing);
     // risk: state lives only in JS — reload (or a shared link) shows a different product list
     await listing.sortBy('price-desc');
     await listing.applyMultiSelectFilter(listing.filterOfType('manufacturer'));
@@ -271,6 +325,7 @@ test.describe('Filters', () => {
   });
 
   test('a filtered URL opened directly shows the same products as filtering in the UI', async ({ page, listing, browser, cfg }) => {
+    await skipWithoutManufacturerFilter(listing);
     // risk: server-side rendering and the AJAX filter use different criteria
     await listing.applyMultiSelectFilter(listing.filterOfType('manufacturer'));
     const url = page.url();
@@ -288,6 +343,7 @@ test.describe('Filters', () => {
   });
 
   test('removing the filter chip restores the unfiltered listing', async ({ page, listing }) => {
+    await skipWithoutManufacturerFilter(listing);
     // risk: removing a filter keeps stale results or leaves the parameter in the URL
     const before = await listing.productNames();
     await listing.applyMultiSelectFilter(listing.filterOfType('manufacturer'));
@@ -319,7 +375,8 @@ test.describe('Filters', () => {
     await expect(listing.productBoxes.first()).toBeVisible();
   });
 
-  test('price filter limits product prices', async ({ page, listing }) => {
+  test('price filter limits product prices', async ({ page, listing, cfg }) => {
+    test.skip(cfg.features.guestPrices === false, 'price filter needs visible prices');
     const prices = await listing.productPrices();
     const max = Math.ceil(prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)]);
     await listing.applyPriceFilter(undefined, max);

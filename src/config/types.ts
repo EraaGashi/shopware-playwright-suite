@@ -100,6 +100,11 @@ export interface ProjectConfig {
   /** Human readable name, shown in reports. */
   name: string;
   baseURL: string;
+  /**
+   * Production (or production-like) shop: nothing may be written. Forces ALLOW_WRITE_TESTS=false,
+   * CLEANUP_TEST_DATA=false and orderPlacement=false and ignores TEST_CUSTOMER_* — whatever .env / CI says.
+   */
+  readOnly?: boolean;
   /** Shopware storefront locale — used for price parsing only. */
   locale: string;
   currencySymbol: string;
@@ -138,6 +143,11 @@ export interface ProjectConfig {
     mainCategories: string[];
     /** A category with enough products for listing / filter / sorting tests. */
     listingCategoryPath: string;
+    /**
+     * Search engine `max_result_window` of the shop (default 10000, Shopware's setting). The deep-page
+     * tests request the first page past it — set it when the shop raised the limit.
+     */
+    searchResultWindow?: number;
     /** A simple (non-variant) product that can be bought. */
     simpleProduct: ProductRef;
     /** A product with variants (configurator). */
@@ -186,8 +196,8 @@ export interface ProjectConfig {
       tabText: string;
       /** Widget container, attached once the tab is opened. */
       root: string;
-      /** Accessible name of the "write a review" button inside the widget. */
-      writeButton: string | RegExp;
+      /** Accessible name of the "write a review" button inside the widget (unset = the widget has none). */
+      writeButton?: string | RegExp;
     };
   };
 
@@ -216,8 +226,9 @@ export interface ProjectConfig {
    * How the setup records the cookie consent all tests start with (default: "only necessary", keeping
    * cookie-preference + cookie-config-hash). For shops whose "only necessary" button is broken or whose
    * consent lives in their own cookies: click "accept all" and keep the cookies matching `keep`.
+   * Also for extra consent cookies the shop checks (e.g. Shopware's `_GRECAPTCHA` for reCAPTCHA forms).
    */
-  consentRecording?: { button: 'acceptAll'; keep: RegExp };
+  consentRecording?: { button?: 'acceptAll' | 'onlyNecessary'; keep: RegExp };
 
   /** Responsive layout suite (tests/storefront/responsive-layout.spec.ts); works with the defaults when unset. */
   layout?: LayoutTestConfig;
@@ -234,7 +245,7 @@ export interface LayoutTestConfig {
   minTargetSize?: number;
   /** Narrowest acceptable product box in the listing grid in px (default 140). */
   minProductBoxWidth?: number;
-  /** Viewports skipped for this shop (name or part of it, e.g. 'mobile-320x568'), with the reason. */
+  /** Viewports skipped for this shop (name or part of it, e.g. 'mobile-375x812'), with the reason. */
   skipViewports?: KnownIssue[];
 }
 
@@ -293,7 +304,7 @@ export interface ClientTestConfig {
   /** Pages checked at each viewport: no horizontal scrolling, logo and cart reachable. */
   responsive?: {
     pages: ClientPage[];
-    /** Default: mobile 390×844, tablet 768×1024, desktop 1440×900. */
+    /** Default: desktop 1440×900, laptop 1366×768, tablet 768×1024, mobile 375×812. */
     viewports?: Array<{ name: string; width: number; height: number }>;
   };
 
