@@ -14,6 +14,10 @@ const browserDevices: Record<string, (typeof devices)[string]> = {
   webkit: devices['Desktop Safari'],
 };
 
+// Logging out ends every session of the account on some shops → with one shared test account
+// (TEST_CUSTOMER_EMAIL) @ends-sessions tests run after all others instead of in parallel with them.
+const lastOnly = cfg.env.testCustomer ? /@ends-sessions/ : undefined;
+
 const desktopProjects: Project[] = [
   { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ...extraBrowsers
@@ -23,7 +27,7 @@ const desktopProjects: Project[] = [
   ...p,
   testDir: './tests',
   testIgnore: /setup\/.*/,
-  grepInvert: /@mobile-only/,
+  grepInvert: lastOnly ? /@mobile-only|@ends-sessions/ : /@mobile-only/,
   dependencies: ['setup'],
 }));
 
@@ -60,9 +64,16 @@ export default defineConfig({
       testMatch: /setup\/.*\.setup\.ts/,
       teardown: 'cleanup',
     },
+    // teardown of setup: runs once every other project is done, also when tests failed
+    // (+ the @ends-sessions tests with a shared test account — a teardown's own teardown never runs)
     {
       name: 'cleanup',
       testMatch: /setup\/.*\.teardown\.ts/,
+      ...(lastOnly && {
+        testMatch: [/setup\/.*\.teardown\.ts/, /storefront\/.*\.spec\.ts/],
+        grep: [lastOnly, /delete leftover test customers/],
+        use: { ...devices['Desktop Chrome'] },
+      }),
     },
     ...desktopProjects,
     {
@@ -70,6 +81,7 @@ export default defineConfig({
       testDir: './tests',
       testIgnore: /setup\/.*/,
       grep: /@mobile/,
+      ...(lastOnly && { grepInvert: lastOnly }),
       use: { ...devices['Pixel 7'] },
       dependencies: ['setup'],
     },

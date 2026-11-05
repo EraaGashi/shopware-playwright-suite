@@ -134,7 +134,13 @@ export class CheckoutPage extends BasePage {
   async revealPayment(): Promise<void> {
     if (!this.s.checkout.paymentReveal) return;
     const reveal = this.$(this.s.checkout.paymentReveal).locator('visible=true').first();
-    if (await reveal.count()) await reveal.click();
+    if (!(await reveal.count())) return;
+    // the step expands with JS — a click before the theme script is bound does nothing, and clicking a
+    // method label of the closed step sends no /checkout/configure → click until the methods show
+    await expect(async () => {
+      if (await reveal.isVisible()) await reveal.click();
+      expect((await this.paymentMethods()).some((m) => m.visible), 'payment step did not open').toBe(true);
+    }).toPass({ timeout: 15_000 });
   }
 
   async selectedPayment(): Promise<string | undefined> {

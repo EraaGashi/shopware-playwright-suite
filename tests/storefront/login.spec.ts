@@ -4,7 +4,8 @@ import type { Page } from '@playwright/test';
 import type { ResolvedConfig } from '../../src/config/types';
 
 test.describe('Login / logout', () => {
-  test('customer can log in and log out', { tag: ['@smoke', '@mobile'] }, async ({ page, cfg, auth, account, customer }) => {
+  // @ends-sessions: logging out can end the account's other sessions (dev Mall Street does)
+  test('customer can log in and log out', { tag: ['@smoke', '@mobile', '@ends-sessions'] }, async ({ page, cfg, auth, account, customer }) => {
     await auth.open();
     await auth.loginAndExpectSuccess(customer.email, customer.password);
     await expect(page).toHaveURL(new RegExp(`${cfg.routes.account}(\\?.*)?$`));

@@ -100,12 +100,14 @@ const config: ProjectConfig = {
       // ("addresses page lists the default address" looks for the street, the name test restores the name).
       address: {
         // not asked for at /account/register — used by the guest checkout form and Store API registration
-        street: '1 Test Street',
-        zipcode: '10001',
-        city: 'New York',
+        // must be a real address: dev validates it ("Your shipping address could not be validated" blocks
+        // the order for the made-up "1 Test Street, 10001 New York", 2026-11-05) — same as the test account's
+        street: '100 Congress Avenue',
+        zipcode: '78701',
+        city: 'Austin',
         countryIso: 'US',
         countryLabel: 'United States',   // checkout: "United States of America" (only country)
-        state: 'New York',               // required in the dev guest checkout ("Input should not be empty")
+        state: 'Texas',                  // required in the dev guest checkout ("Input should not be empty")
       },
       // default billing + shipping street of the TEST_CUSTOMER_EMAIL account, per host (checked 2026-11-05):
       // dev.themallstreet.com "100 Congress Avenue, Austin, TX 78701", cloud7 "maple street, 1111111 California"
