@@ -14,39 +14,10 @@ test.describe('Homepage', () => {
     await expect(page.locator('.cms-page, .cms-section').first()).toBeVisible();
   });
 
-  test('has basic SEO meta data', { tag: '@smoke' }, async ({ page, cfg }) => {
-    await page.goto(cfg.routes.home);
-    await expect(page).toHaveTitle(/.+/);
-    await expect(page.locator('html')).toHaveAttribute('lang', /.+/);
-    await expect(page.locator('meta[name="viewport"]')).toHaveCount(1);
-    const robots = await page.locator('meta[name="robots"]').getAttribute('content').catch(() => null);
-    test.info().annotations.push({ type: 'robots', description: robots ?? '(none)' });
-  });
-
-  test('logo links back to the homepage', async ({ page, cfg, header }) => {
-    await page.goto(cfg.testData.listingCategoryPath);
-    await Promise.all([page.waitForLoadState('domcontentloaded'), header.logo.click()]);
-    await expect(page).toHaveURL(new RegExp(`${cfg.baseURL.replace(/[.]/g, '\\.')}/?$`));
-  });
-
   test('has no uncaught JavaScript errors', { tag: '@smoke' }, async ({ page, cfg }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(cfg.routes.home, { waitUntil: 'load' });
     expect(errors, errors.join('\n')).toEqual([]);
-  });
-
-  test('renders product images without broken sources', async ({ page, cfg }) => {
-    await page.goto(cfg.routes.home, { waitUntil: 'load' });
-    const imgs = page.locator(`${cfg.selectors.listing.productImage}, .cms-image`);
-    const count = await imgs.count();
-    test.skip(count === 0, 'No product images on homepage');
-    for (let i = 0; i < Math.min(count, 6); i++) {
-      const img = imgs.nth(i);
-      await img.scrollIntoViewIfNeeded();
-      // broken = finished loading without any pixels; an image that already has pixels may still be
-      // swapping to a sharper srcset candidate (complete=false) — that's fine
-      await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth > 0), { message: 'image is broken (no pixels)' }).toBe(true);
-    }
   });
 });

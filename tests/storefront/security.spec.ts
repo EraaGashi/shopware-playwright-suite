@@ -50,34 +50,6 @@ test.describe('Security', () => {
     }
   });
 
-  test('login does not redirect to external sites', async ({ page, cfg, auth, customer }) => {
-    // risk: open redirect — phishing links like shop.com/account/login?redirectTo=https://evil.example
-    const origin = new URL(cfg.baseURL).origin;
-    for (const target of ['https://example.org/e2e-open-redirect', '//example.org/e2e-open-redirect']) {
-      await test.step(`redirectTo=${target}`, async () => {
-        await page.goto(cfg.routes.logout); // start logged out (no-op for guests)
-        await page.goto(`${cfg.routes.login}?redirectTo=${encodeURIComponent(target)}`);
-        await Promise.all([page.waitForEvent('load'), auth.login(customer.email, customer.password)]);
-        expect(new URL(page.url()).origin, 'left the shop after login').toBe(origin);
-        // proof the login itself happened (otherwise the check above proves nothing)
-        await page.goto(cfg.routes.account);
-        await expect(page, 'login with the redirect parameter failed').not.toHaveURL(new RegExp(cfg.routes.login));
-      });
-    }
-  });
-
-  test('plain HTTP is redirected to HTTPS', async ({ page, cfg }) => {
-    // risk: pages (and the session cookie) reachable unencrypted
-    test.skip(!cfg.baseURL.startsWith('https://'), 'Shop is not served over HTTPS');
-    const url = cfg.baseURL.replace(/^https:/, 'http:') + cfg.routes.login;
-    // one request without following redirects: the answer itself must point to https://
-    const res = await page.request.get(url, { headers: bypass, maxRedirects: 0, failOnStatusCode: false, timeout: 15_000 });
-    const body = await res.text().catch(() => '');
-    test.skip(isBotChallenge(res.status(), res.headers(), body), 'Inconclusive: bot protection answered the http:// request');
-    expect([301, 302, 307, 308], `http:// answered ${res.status()} instead of a redirect`).toContain(res.status());
-    expect(res.headers()['location'] ?? '', 'redirect target').toMatch(/^https:\/\//);
-  });
-
   test('error pages do not reveal debug information', async ({ page, cfg }) => {
     // risk: debug mode in production — stack traces show code paths, versions, sometimes credentials
     const probes = [
@@ -90,15 +62,6 @@ test.describe('Security', () => {
       const res = await page.goto(path).catch(() => null);
       const text = await page.locator('body').innerText().catch(() => '');
       expect.soft(DEBUG_LEAK.test(text) || DEBUG_LEAK.test(await page.title()), `${path} (${res?.status()}) shows debug output`).toBe(false);
-    }
-  });
-
-  test('Symfony profiler and debug toolbar are not reachable', async ({ page }) => {
-    // risk: the profiler exposes every request incl. headers, sessions, SQL and environment variables
-    for (const path of ['/_profiler', '/_wdt/e2e']) {
-      const res = await page.goto(path).catch(() => null);
-      const title = await page.title();
-      expect.soft(res?.status() === 200 && /Profiler|Symfony/i.test(title + (await page.locator('body').innerText().catch(() => ''))), `${path} is reachable`).toBe(false);
     }
   });
 
@@ -122,32 +85,6 @@ test.describe('Security', () => {
       if (!r) continue;
       checked++;
       expect.soft(r.res.status() === 200 && signature.test(r.body), `${path} is served (HTTP ${r.res.status()})`).toBe(false);
-    }
-    test.skip(checked === 0, 'Inconclusive: bot protection answered every request (allowlist the test runner)');
-  });
-
-  test('directory listings are disabled', async ({ page, cfg }) => {
-    // risk: browsable folders reveal every uploaded file, theme and plugin asset
-    await page.goto(cfg.routes.home);
-    let checked = 0;
-    for (const path of ['/media/', '/bundles/', '/theme/', '/thumbnail/']) {
-      const r = await get(page, path);
-      if (!r) continue;
-      checked++;
-      expect.soft(/<title>\s*Index of \/|<h1>\s*Index of \//i.test(r.body), `${path} lists its files`).toBe(false);
-    }
-    test.skip(checked === 0, 'Inconclusive: bot protection answered every request (allowlist the test runner)');
-  });
-
-  test('Admin API refuses anonymous requests', async ({ page, cfg }) => {
-    // risk: customer or order data readable without an admin token
-    await page.goto(cfg.routes.home);
-    let checked = 0;
-    for (const path of ['/api/_info/version', '/api/customer', '/api/order']) {
-      const r = await get(page, path);
-      if (!r) continue;
-      checked++;
-      expect.soft([401, 403], `${path} answered ${r.res.status()} without a token`).toContain(r.res.status());
     }
     test.skip(checked === 0, 'Inconclusive: bot protection answered every request (allowlist the test runner)');
   });

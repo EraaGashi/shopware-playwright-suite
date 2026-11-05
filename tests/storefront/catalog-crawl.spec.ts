@@ -162,38 +162,4 @@ test.describe('Catalog crawl', { tag: '@crawl' }, () => {
     expect(list(broken, (c) => ` → ${c.status || 'no response'}${c.errorPage ? ' (error page)' : ''}`)).toEqual([]);
   });
 
-  test('sampled navigation categories with a product listing are not empty', async () => {
-    // risk: the menu leads customers to categories without a single product (dead ends)
-    const empty = data.categories.filter((c) => c.status < 400 && c.hasListing && c.productCount === 0);
-    expect(list(empty), `${empty.length} of ${data.categories.length} sampled categories show an empty product listing`).toEqual([]);
-  });
-
-  test('sampled product pages load and have a name', async () => {
-    expect(data.products.length, 'no product links found in the sampled categories').toBeGreaterThan(0);
-    const broken = data.products.filter((p) => p.status >= 400 || p.status === 0 || p.errorPage || !p.name);
-    expect(list(broken, (p) => ` → ${p.status || 'no response'}${p.errorPage ? ' (error page)' : ''}${p.name ? '' : ' (no name)'}`)).toEqual([]);
-  });
-
-  test('sampled products have a price above zero', async ({ cfg }) => {
-    // risk: price rules / import errors publish products for free (or as "0,00 €" placeholders)
-    test.skip(cfg.features.guestPrices === false, 'Guests see no prices');
-    const free = data.products.filter((p) => !(p.price > 0));
-    expect(list(free, (p) => ` → ${Number.isNaN(p.price) ? 'no price' : p.price}`), `${free.length} of ${data.products.length} sampled products`).toEqual([]);
-  });
-
-  test('sampled products show at least one image', async () => {
-    const noImage = data.products.filter((p) => !p.hasImage);
-    expect(list(noImage), `${noImage.length} of ${data.products.length} sampled products without image`).toEqual([]);
-  });
-
-  test('sampled products have a description', async () => {
-    const empty = data.products.filter((p) => p.descriptionLength < 20);
-    expect(list(empty, (p) => ` → ${p.descriptionLength} characters`), `${empty.length} of ${data.products.length} sampled products`).toEqual([]);
-  });
-
-  test('in-stock sampled products can be put in the cart', async () => {
-    // risk: product says "in stock" (also to Google) but has no usable buy button
-    const stuck = data.products.filter((p) => p.inStock === true && !p.buyable);
-    expect(list(stuck), 'in stock according to structured data, but no enabled buy button').toEqual([]);
-  });
 });

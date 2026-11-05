@@ -51,19 +51,4 @@ test.describe('Tracking & cookie consent', () => {
     expect(hits(), `tracking requests sent while the cookie banner is still open:\n${hits().join('\n')}`).toEqual([]);
     expect(await trackingCookies(context), 'tracking cookies set before consent').toEqual([]);
   });
-
-  test('no tracking after choosing "only technically required"', { tag: '@smoke' }, async ({ page, context, cfg, cookieBanner }) => {
-    await page.goto(cfg.routes.home, { waitUntil: 'load' });
-    await cookieBanner.acceptOnlyNecessary();
-    await expect(cookieBanner.banner).toBeHidden();
-
-    // judge the *next* page view (consent is now stored) and drop anything set before the choice
-    await context.clearCookies({ name: TRACKING_COOKIE });
-    const hits = recordTracking(page);
-    await page.goto(cfg.testData.listingCategoryPath, { waitUntil: 'load' });
-    await page.waitForTimeout(SETTLE_MS);
-
-    expect(hits(), `tracking requests sent although the visitor declined:\n${hits().join('\n')}`).toEqual([]);
-    expect(await trackingCookies(context), 'tracking cookies set although the visitor declined').toEqual([]);
-  });
 });

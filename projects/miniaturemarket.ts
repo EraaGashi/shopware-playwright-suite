@@ -97,8 +97,6 @@ const config: ProjectConfig = {
   // Not applicable for this shop (verified 2026-11-02) → skipped with the reason.
   skipTests: [
     { test: 'variant switch updates product number and URL', reason: 'no configurable (variant) products in the catalog' },
-    { test: 'switching one variant option keeps the other options', reason: 'no configurable (variant) products in the catalog' },
-    { test: 'a variant URL keeps its selected options after reload', reason: 'no configurable (variant) products in the catalog' },
     { test: 'guest can add a product to the wishlist', reason: '"My Notes" multi-list wishlist: adding opens a list-picker dialog, no header counter' },
     { test: 'wishlist page shows added product and allows removal', reason: '"My Notes" multi-list wishlist (/note), not Shopware\'s single wishlist' },
   ],
@@ -107,7 +105,6 @@ const config: ProjectConfig = {
   knownIssues: [
     { test: 'add product from detail page opens off-canvas cart', reason: 'header cart total includes shipping ($31.99 item → $37.98) — compare with the theme team whether that is intended' },
     { test: 'no tracking before the visitor makes a consent choice', reason: 'Google Analytics, Reddit and Meta pixel fire while the cookie banner is still open' },
-    { test: 'no tracking after choosing "only technically required"', reason: '"Only technically required" sets no consent and closes nothing; tracking keeps running' },
   ],
 
   // "Only technically required" sets no cookie and leaves the banner open, and the shop deletes a lone

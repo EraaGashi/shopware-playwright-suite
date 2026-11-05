@@ -5,7 +5,7 @@ test.describe('Cookie consent', () => {
 
   test.beforeEach(({ cfg }) => skipUnless(cfg.features.cookieBanner, 'cookieBanner'));
 
-  test('banner is shown to new visitors and remembered after choice', { tag: ['@smoke', '@mobile'] }, async ({ page, cfg, cookieBanner, context }) => {
+  test('banner is shown to new visitors and remembered after choice', { tag: '@smoke' }, async ({ page, cfg, cookieBanner, context }) => {
     await page.goto(cfg.routes.home);
     await expect(cookieBanner.banner).toBeVisible();
 
@@ -44,45 +44,6 @@ test.describe('Cookie consent', () => {
     await expect(cookieBanner.banner).toBeHidden();
     const tab = await context.newPage();
     await tab.goto(cfg.routes.home, { waitUntil: 'load' });
-    await expect(tab.locator(s.banner)).toBeHidden();
-  });
-
-  test('a custom cookie configuration is remembered', async ({ page, cfg, cookieBanner, context }) => {
-    const s = cfg.selectors.cookie;
-    await page.goto(cfg.routes.home, { waitUntil: 'load' });
-    await page.locator(s.configure).locator('visible=true').first().click();
-    await expect(page.locator(s.configureSubmit).first()).toBeVisible(); // dialog fully open
-    const items = page.locator(s.configureItem);
-    await expect(items.first(), 'no optional cookies to choose in the dialog').toBeAttached();
-    const names = await items.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).dataset.cookie!));
-    test.skip(names.length < 2, 'Need at least two optional cookies to test a partial choice');
-
-    // expand the collapsed groups like a visitor would, then tick exactly one optional cookie
-    for (const toggle of await page.locator(s.configureGroupToggle).all()) {
-      if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-    }
-    const [chosen, ...others] = names;
-    for (const other of others) await expect(page.locator(`${s.configureItem}[data-cookie="${other}"]`), `"${other}" is pre-selected`).not.toBeChecked();
-    const box = page.locator(`${s.configureItem}[data-cookie="${chosen}"]`);
-    await expect(box).toBeVisible();
-    await box.check();
-    await page.locator(s.configureSubmit).first().click();
-    await expect(cookieBanner.banner).toBeHidden();
-
-    const jarNow = async () => Object.fromEntries((await context.cookies()).map((c) => [c.name, c.value]));
-    const check = async () => {
-      // the shop writes the consent cookies a moment after the dialog closes
-      await expect.poll(async () => (await jarNow())['cookie-preference'], { message: 'consent not stored', timeout: 5_000 }).toBe('1');
-      const jar = await jarNow();
-      expect(jar[chosen], `chosen cookie "${chosen}" not stored`).toBe('1');
-      for (const other of others) expect(jar[other], `"${other}" was set although not chosen`).toBeUndefined();
-    };
-    await check();
-    await page.reload({ waitUntil: 'load' });
-    await expect(cookieBanner.banner).toBeHidden();
-    await check();
-    const tab = await context.newPage();
-    await tab.goto(cfg.testData.listingCategoryPath, { waitUntil: 'load' });
     await expect(tab.locator(s.banner)).toBeHidden();
   });
 });

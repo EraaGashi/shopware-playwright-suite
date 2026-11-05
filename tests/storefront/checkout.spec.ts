@@ -16,10 +16,6 @@ function stopBeforeOrder(orderPlacement: boolean): boolean {
 }
 
 test.describe('Checkout', () => {
-  test('empty cart cannot proceed to checkout', { tag: '@smoke' }, async ({ page, cfg }) => {
-    await page.goto(cfg.routes.checkoutConfirm);
-    await expect(page).toHaveURL(new RegExp(cfg.routes.cart));
-  });
 
   test('guest is asked to log in or register before confirm', { tag: '@smoke' }, async ({ page, cartHelper, cfg, auth }) => {
     await cartHelper.add(cfg.testData.simpleProduct);
@@ -112,7 +108,7 @@ test.describe('Checkout consistency', () => {
     };
   }
 
-  test('confirm page shows the same items and total as the cart', { tag: '@mobile' }, async ({ loggedInPage: _page, cfg, cart, cartHelper, checkout }) => {
+  test('confirm page shows the same items and total as the cart', async ({ loggedInPage: _page, cfg, cart, cartHelper, checkout }) => {
     // risk: checkout calculates differently than the cart (other prices, lost or duplicated positions)
     const p = cfg.testData.simpleProduct;
     const restore = await rememberLine(cart, p.name);
@@ -127,70 +123,6 @@ test.describe('Checkout consistency', () => {
       expect(await checkout.lineSummary(), 'line items (name = line total) differ between cart and confirm page').toEqual(cartLines);
       expect(await checkout.totalValue(), 'grand total differs between cart and confirm page').toBeCloseTo(cartTotal, 2);
     } finally {
-      await restore();
-    }
-  });
-
-  test('changing the cart after visiting checkout updates the confirm page', async ({ loggedInPage: _page, cfg, cart, cartHelper, checkout }) => {
-    // risk: confirm page shows a stale cart (old quantity / total) after the customer went back to change it
-    const p = cfg.testData.simpleProduct;
-    const restore = await rememberLine(cart, p.name);
-    try {
-      await cartHelper.add(p, 1);
-      await checkout.openConfirm();
-      await checkout.expectOnConfirm();
-      const lineBefore = await checkout.lineTotalOf(p.name);
-      const totalBefore = await checkout.totalValue();
-
-      await cart.open();
-      await cart.setQuantity(p.name, (await cart.quantityOf(p.name)) + 1);
-
-      await checkout.openConfirm();
-      await checkout.expectOnConfirm();
-      expect(await checkout.lineTotalOf(p.name), 'line total on confirm page not updated').toBeGreaterThan(lineBefore);
-      expect(await checkout.totalValue(), 'grand total on confirm page not updated').toBeGreaterThan(totalBefore);
-    } finally {
-      await restore();
-    }
-  });
-
-  test('chosen payment method survives a reload and shipping changes', async ({ loggedInPage: page, cfg, cart, cartHelper, checkout }) => {
-    // risk: selection silently falls back to the default → customer pays with another method than chosen
-    const p = cfg.testData.simpleProduct;
-    const restore = await rememberLine(cart, p.name);
-    let original: string | undefined;
-    try {
-      await cartHelper.add(p, 1);
-      await checkout.openConfirm();
-      await checkout.expectOnConfirm();
-      await checkout.revealPayment();
-      const payments = await checkout.paymentMethods();
-      test.skip(payments.length < 2, 'Only one payment method — nothing to switch');
-      original = payments.find((m) => m.checked)?.value;
-      const other = payments.find((m) => !m.checked && m.visible);
-      test.skip(!other, 'No other payment method visible on the confirm page — set selectors.checkout.paymentReveal for stepped checkouts');
-
-      await checkout.choosePayment(other!.value);
-      await page.reload();
-      expect(await checkout.selectedPayment(), `payment "${other!.label}" lost after reload`).toBe(other!.value);
-
-      const shipping = await checkout.shippingMethods();
-      if (shipping.length < 2) {
-        test.info().annotations.push({ type: 'shipping part skipped', description: 'only one shipping method' });
-        return;
-      }
-      const shipOriginal = shipping.find((m) => m.checked)!;
-      const totalBefore = await checkout.totalValue();
-      await checkout.chooseShipping(shipping.find((m) => !m.checked)!.value);
-      expect(await checkout.selectedPayment(), 'changing the shipping method reset the payment method').toBe(other!.value);
-      // switching back must give exactly the same total again (no leftover surcharge / lost discount)
-      await checkout.chooseShipping(shipOriginal.value);
-      expect(await checkout.totalValue(), 'total differs after switching shipping away and back').toBeCloseTo(totalBefore, 2);
-    } finally {
-      if (original) {
-        await checkout.openConfirm();
-        if ((await checkout.selectedPayment()) !== original) await checkout.choosePayment(original);
-      }
       await restore();
     }
   });

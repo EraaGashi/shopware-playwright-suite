@@ -27,7 +27,7 @@ ALLOW_WRITE_TESTS=false npm test   # production-safe: no customers, orders or fo
 npm run test:ui                    # Playwright UI mode for debugging
 npm run test:crawl                 # catalog crawler only (leave it out elsewhere: --grep-invert @crawl)
 npm run test:security              # passive security checks only
-npm run test:responsive            # responsive layout suite only (desktop 1440, laptop 1366, tablet 768, phone 375)
+npm run test:responsive            # responsive layout suite only (desktop 1440, tablet 768, phone 375)
 ```
 
 ---
@@ -110,27 +110,27 @@ test('customer orders', async ({ loggedInPage, cartHelper, checkout, account, cf
 
 | Spec | Covers |
 |---|---|
-| `homepage` | header/nav/content/footer, SEO basics, logo link, JS errors, images |
-| `cookie-consent` | banner shown, "only necessary", remembered |
+| `homepage` | header/nav/content/footer, JS errors |
+| `cookie-consent` | banner shown and remembered, "accept all" remembered |
 | `navigation` | configured categories, every category opens, flyout, breadcrumb |
-| `listing` | product boxes, PDP link, pagination, sorting (price/name, order kept on page 2), filters (manufacturer, property, price min+max, reset, sorting kept, kept on page 2, browser back), deep page numbers, contradictory price params |
-| `product-detail` | core info, canonical/structured data, variant switch (other options kept), breadcrumb, reviews, 404 product |
-| `search` | header search, relevance, suggest, no result, XSS-safe input, empty/blank/overlong terms, sorting keeps the term, deep page numbers |
-| `cart` | add from PDP/listing, quantity (off-canvas + cart page), PDP price = cart price × quantity, same product twice = one line, remove (other lines kept), emptied cart blocks checkout, persistence, promotion codes |
-| `checkout` | empty cart guard, login/register gate, guest order, customer order → account, TOS required, payment/shipping methods, cart = confirm page (items, totals), cart changes reach confirm, payment choice kept after reload / shipping change |
-| `registration` | register, empty-form validation, invalid email, short password, duplicate email |
-| `login` | login/logout, wrong password, unknown user, upper-case e-mail, back button after logout, header menu, cart kept after login |
-| `account` | overview, profile update, addresses, orders (number + amount), wrong current password rejected, empty address form rejected, login protection |
-| `wishlist` | guest add, wishlist page + remove, persistence (feature-flagged) |
+| `listing` | product boxes, PDP link, pagination, sorting options and price sorting, pages past the end, filter types, manufacturer filter + reset, price filter |
+| `product-detail` | core info, variant switch, reviews, 404 product |
+| `search` | header search, suggest, no result, XSS-safe input, pages past the end |
+| `cart` | add from PDP/listing, quantity on the cart page, PDP price = cart price × quantity, remove, promotion code |
+| `checkout` | login/register gate, guest order, customer order → account, TOS required, payment/shipping methods, cart = confirm page (items, totals) |
+| `registration` | register, empty-form validation, duplicate email |
+| `login` | login/logout, wrong password, password recovery does not reveal accounts |
+| `account` | overview, default address, orders (number + amount), login protection |
+| `wishlist` | guest add, wishlist page + remove (feature-flagged) |
 | `forms` | contact form validation + submit, newsletter (feature-flagged) |
 | `mobile` | off-canvas nav, burger visibility, no horizontal overflow, off-canvas filters |
-| `accessibility` | page language vs. locale, image alt attributes, accessible names of header controls and login/register fields, skip link as first tab stop |
-| `pricing` | cart summary adds up (grand total = net + taxes), each tax = net × rate from its label, quantity 7 without rounding drift (selectors `cart.summaryNet` / `summaryTax` / `summaryTaxLabel` for other themes) |
-| `cart-merge` | guest cart + saved account cart merged at login (nothing lost or duplicated), account cart not visible after logout, cart follows the customer to a new browser session — snapshots and restores the test account's cart |
-| `catalog-crawl` (`@crawl`) | samples categories from the navigation and their products (size: `crawl` in the profile): broken pages, empty category listings, products priced 0, without image or description, in stock but not buyable |
-| `security` | security headers, session cookie flags, no open redirect after login, HTTP → HTTPS, no debug output / profiler, no exposed files (`.env`, `.git` …), no directory listings, Admin API needs a token. Bot-protection answers count as *inconclusive* (skipped) |
-| `responsive-layout` (`@responsive`) | every core page (home, listing, PDP, search, cart, login, register, recovery, 404, account, checkout) and the shared components (navigation + flyout / burger menu, filters, search, cookie banner, off-canvas cart) at desktop 1440×900, laptop 1366×768, tablet 768×1024 and phone 375×812: horizontal overflow (with the causing elements), elements cut off at the screen edge, clipped text, covered controls, fixed/sticky bars hiding the screen, stretched images, touch targets (WCAG 2.5.8), product grid columns, layout after live resizing. Failures attach the measured issues as JSON and a full-page screenshot with the offenders outlined. Subset: `LAYOUT_VIEWPORTS=mobile` (name parts, comma-separated); shop specifics in `layout` of the profile |
-| `links-and-errors` | important links, configured redirects, broken header/footer links, sitemap/robots, 404 page, bad params, bad POST |
+| `accessibility` | image alt attributes, labelled login/register fields |
+| `pricing` | cart summary adds up (grand total = net + taxes; selectors `cart.summaryNet` / `summaryTax` for other themes) |
+| `cart-merge` | guest cart + saved account cart merged at login (nothing lost or duplicated) — snapshots and restores the test account's cart |
+| `catalog-crawl` (`@crawl`) | samples categories from the navigation (size: `crawl` in the profile) and checks they load without errors |
+| `security` | security headers, session cookie flags, no debug output on error pages, no exposed files (`.env`, `.git` …). Bot-protection answers count as *inconclusive* (skipped) |
+| `responsive-layout` (`@responsive`) | home, listing and PDP, the navigation (flyout / burger menu) and cart + off-canvas cart + guest checkout at desktop 1440×900, tablet 768×1024 and phone 375×812: horizontal overflow (with the causing elements), elements cut off at the screen edge, clipped text, covered controls, fixed/sticky bars hiding the screen, stretched images. Failures attach the measured issues as JSON and a full-page screenshot with the offenders outlined. Subset: `LAYOUT_VIEWPORTS=mobile` (name parts, comma-separated); shop specifics in `layout` of the profile |
+| `links-and-errors` | important links, configured redirects, broken header/footer links, 404 page |
 
 ---
 

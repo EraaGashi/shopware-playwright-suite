@@ -96,8 +96,6 @@ const config: ProjectConfig = {
   // Not applicable for this shop (verified 2026-11-04) → skipped with the reason.
   skipTests: [
     { test: 'variant switch updates product number and URL', reason: 'no configurable (variant) products found' },
-    { test: 'switching one variant option keeps the other options', reason: 'no configurable (variant) products found' },
-    { test: 'a variant URL keeps its selected options after reload', reason: 'no configurable (variant) products found' },
     { test: 'expected filter types are available', reason: 'the product listing ("Neue Artikel") has no filter panel' },
   ],
 

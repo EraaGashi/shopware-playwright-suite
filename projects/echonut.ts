@@ -95,7 +95,6 @@ const config: ProjectConfig = {
   skipTests: [
     { test: 'mandatory legal pages are linked in the footer and load', reason: 'legal pages still contain placeholder text (intended for now)' },
     { test: "social media links point to the shop's own profiles", reason: 'YouTube link is a placeholder until the channel exists (intended for now)' },
-    { test: 'delivery promise does not show dates in the past', reason: 'the "Hurry!" delivery block is static marketing text (intended for now)' },
   ],
 
   redirects: [

@@ -221,6 +221,8 @@ export const shopware67Selectors = {
     profileLastName: '#profilePersonalForm [name="lastName"]',
     profileSubmit: '#profilePersonalForm button[type="submit"]',
     addressCard: '.address-card, .address-box',
+    /** the card(s) of the default billing / shipping address on /account/address ('' = search the whole page) */
+    defaultAddressCard: '',
     addAddressButton: 'a[href*="/account/address/create"]',
     orderItem: '.order-table, .order-wrapper, .account-order-overview .order-item',
     /** expands an order's details (line items, totals) in the order history */

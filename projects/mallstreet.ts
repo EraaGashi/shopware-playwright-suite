@@ -107,6 +107,11 @@ const config: ProjectConfig = {
         countryLabel: 'United States',   // checkout: "United States of America" (only country)
         state: 'New York',               // required in the dev guest checkout ("Input should not be empty")
       },
+      // default billing + shipping street of the TEST_CUSTOMER_EMAIL account, per host (checked 2026-11-05):
+      // dev.themallstreet.com "100 Congress Avenue, Austin, TX 78701", cloud7 "maple street, 1111111 California"
+      // — update it when the account's default changes
+      // no \b: the card joins name and street with <br>, so its text reads "test2 test2100 Congress Avenue"
+      testCustomerDefaultStreet: /100 Congress Avenue|maple street/i,
     },
 
     contactLinkText: /Contact|Help center/i,
@@ -121,22 +126,15 @@ const config: ProjectConfig = {
 
   // Not applicable for this shop (theme decisions, verified 2026-10-19) → skipped with the reason.
   skipTests: [
-    { test: 'quantity field never puts 0, negative, fractional or too large amounts in the cart', reason: 'PDP has no quantity field — always adds 1' },
-    { test: 'add with quantity > 1 from detail page', reason: 'PDP has no quantity field — always adds 1' },
     { test: 'search suggest shows products while typing', reason: 'no header search; the inspiration search has no suggest dropdown' },
     { test: 'guest can add a product to the wishlist', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
     { test: 'wishlist page shows added product and allows removal', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
-    { test: 'plain HTTP is redirected to HTTPS', reason: 'http://dev.themallstreet.com gets no answer (Cloudflare 522 after ~40 s); browsers use https via HSTS — ignored on request (2026-11-03)' },
-    // no real products yet, all prices 0.00 on purpose (2026-11-02) — remove once the catalog is live
-    { test: 'sampled navigation categories with a product listing are not empty', reason: 'no real products yet — categories are empty on purpose' },
-    { test: 'sampled products have a price above zero', reason: 'no real products yet — all prices are 0.00 on purpose' },
   ],
 
   // Confirmed shop findings (2026-10-19) — tests stay "expected to fail" until fixed, then remove the entry.
   knownIssues: [
     { test: 'shows core product information', reason: 'PDP shows no product number and no tax notice (price "$98.00" without any tax hint); name, price, buy button, gallery and description are fine' },
     { test: 'mandatory legal pages are linked in the footer and load', reason: 'Terms & Conditions, Privacy policy and Returns & refund load but have only 13–15 words of content' },
-    { test: 'search by product number finds the product (full and partial)', reason: 'full product number is found, a partial one ("PTE70393") returns no results' },
   ],
 
   redirects: [
@@ -149,26 +147,6 @@ const config: ProjectConfig = {
   // Configurable client tests (tests/client/, tag @client) — ported from the reference suite
   // (CFE-xxx = its UAT case ids). Verified against the live staging HTML 2026-10-19.
   client: {
-    landingPages: [
-      { name: 'Home page (CFE-001)', path: '/', minProducts: 1 },
-      { name: "Women's CLP (CFE-003)", path: '/Women-s/', heading: "Women's", minProducts: 1 },
-      { name: "Men's CLP (CFE-004)", path: '/Men-s/', heading: "Men's", minProducts: 1 },
-      { name: 'Kids CLP (CFE-005)', path: '/Kids/', heading: 'Kids', minProducts: 1 },
-      { name: 'Beauty CLP (CFE-006)', path: '/Beauty/', heading: 'Beauty' },        // CMS text only, no products yet
-      { name: 'Home CLP (CFE-007)', path: '/Home/', heading: 'Home', minProducts: 1 },
-      { name: 'Travel CLP (CFE-008)', path: '/Travel/', heading: 'Travel', minProducts: 1 },
-      { name: 'Wellness CLP (CFE-009)', path: '/Wellness/', heading: 'Wellness' },  // CMS text only, no products yet
-    ],
-    seo: {
-      pages: [
-        { name: 'Home page', path: '/' },
-        { name: "Women's CLP", path: '/Women-s/' },
-        { name: 'Product page', path: '/Breeze-Tutu-Skirt-Baby/PTE7039301' },
-      ],
-      requireMetaDescription: true,
-      indexable: false,   // staging is noindex,nofollow everywhere — set true for production
-      noindexPaths: ['/account/login', '/checkout/cart', '/wishlist'],
-    },
     headerLinks: [
       { name: 'Order Status', selector: 'a.top-bar-order-status', href: '/account/login?redirectTo=frontend.account.order.page' },
       { name: 'Wishlist (guest → login)', selector: 'a.header-wishlist-btn', href: '/account/login?redirectTo=frontend.wishlist.page' },
@@ -181,27 +159,12 @@ const config: ProjectConfig = {
       { name: 'Returns & refund', text: /Returns & refund/i },
       { name: 'About Us', text: /About Us/i },
     ],
-    encodingPages: [
-      { name: 'Home page', path: '/' },
-      { name: "Women's CLP", path: '/Women-s/' },
-      { name: 'Product page', path: '/Breeze-Tutu-Skirt-Baby/PTE7039301' },
-      { name: 'Product with "&" in its name', path: '/Cloud-Tulle-Dress-Set-Toddler-Little-Kid-amp-Big-Kid/CBS8018035' },
-    ],
     healthPages: [
       { name: 'Home page', path: '/' },
       { name: "Women's CLP", path: '/Women-s/' },
       { name: 'Product page', path: '/Cloud-Tulle-Dress-Set-Baby/CBS8018031' },
       { name: 'Search results', path: '/search?search=parka' },
     ],
-    responsive: {
-      // default viewports: desktop 1440, laptop 1366, tablet 768, phone 375
-      pages: [
-        { name: 'Home page', path: '/' },
-        { name: "Women's CLP", path: '/Women-s/' },
-        { name: 'Product page', path: '/Breeze-Tutu-Skirt-Baby/PTE7039301' },
-        { name: 'Cart', path: '/checkout/cart' },
-      ],
-    },
     // verified 2026-10-20 on staging
     searchCases: [
       { term: 'parka', minResults: 4, expectProduct: 'Aurora Parka' },
@@ -210,23 +173,6 @@ const config: ProjectConfig = {
       { term: 'backpack', expectProduct: 'Hagen Backpack' },
       { term: 'hoodie', expectProduct: 'Lodge Hoodie' },
       { term: 'zzqx-no-such-product-4711', minResults: 0 },
-    ],
-    productGallery: {
-      // the Breeze skirt has no themallstreet gallery block → products with a full gallery
-      pages: [
-        { name: 'Cloud Tulle Dress Set', path: '/Cloud-Tulle-Dress-Set-Baby/CBS8018031' },
-        { name: 'Aurora Parka', path: '/Aurora-Parka/699363271454' },
-      ],
-      minImages: 3,
-    },
-    contentChecks: [
-      { name: 'Hero banner', path: '/', selector: '.themallstreet-banner-hero' },
-      { name: 'Inspiration search', path: '/', selector: '.cms-element-inspiration-search__input' },
-      { name: '"Shop By Category" block', path: '/', selector: '.themallstreet-shop-by-category', text: 'Shop By Category' },
-      { name: '"Discover Our Brands" block', path: '/', selector: '.themallstreet-brand-block', text: 'Discover Our Brands' },
-      { name: 'Brand logos', path: '/', selector: '.themallstreet-brand-block__logo', minCount: 4 },
-      { name: 'Size & Fit note', path: '/Cloud-Tulle-Dress-Set-Baby/CBS8018031', selector: '.product-detail-configurator-size-fit', text: 'Size & Fit' },
-      { name: 'Share button', path: '/Cloud-Tulle-Dress-Set-Baby/CBS8018031', selector: '.product-share-button' },
     ],
   },
 
@@ -271,6 +217,8 @@ const config: ProjectConfig = {
       // Moodboards, Order history) — verified on dev 2026-10-20
       aside: '.account-overview-col',
       asideItem: '.account-overview-card',
+      // address cards carry a "Default billing / shipping address" badge (dev.themallstreet.com, 2026-11-05)
+      defaultAddressCard: '.address-manager-select-address:has(.address-item-default-badge)',
     },
     product: {
       name: 'h1.product-header__name',

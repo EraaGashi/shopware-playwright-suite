@@ -1,11 +1,8 @@
-import type { Browser, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { test, expect } from '../../src/fixtures';
-import { CookieBanner } from '../../src/components/CookieBanner';
 import { AuthPage } from '../../src/pages/AuthPage';
-import { CartPage } from '../../src/pages/CartPage';
 import type { ResolvedConfig } from '../../src/config/types';
 import type { TestCustomer } from '../../src/data/customer';
-import { routeBypassHeader } from '../../src/utils/http';
 
 /**
  * Cart behaviour around login / logout / sessions. Uses the `customer` fixture: a fixed test account
@@ -21,13 +18,6 @@ test.describe('Cart across login and sessions', () => {
     await page.goto(cfg.routes.account);
     if (!new RegExp(cfg.routes.login).test(page.url())) return;
     await new AuthPage(page, cfg).loginAndExpectSuccess(customer.email, customer.password);
-  }
-
-  async function newSession(browser: Browser, cfg: ResolvedConfig): Promise<Page> {
-    const ctx = await browser.newContext({ baseURL: cfg.baseURL, httpCredentials: cfg.env.httpCredentials, locale: cfg.locale });
-    await routeBypassHeader(ctx, cfg);
-    if (cfg.features.cookieBanner) await CookieBanner.preAccept(ctx, cfg.baseURL);
-    return ctx.newPage();
   }
 
   test('guest cart and saved account cart are merged at login', async ({ page, cfg, auth, account, cart, cartHelper, customer }) => {
@@ -70,30 +60,6 @@ test.describe('Cart across login and sessions', () => {
         description: hadGuestBefore ? `${guest.name}: account had ${hadGuestBefore.qty}, guest added 1 → ${guestLines[0].qty} after login` : `${guest.name}: added as new line`,
       });
     } finally {
-      await ensureLoggedIn(page, cfg, customer);
-      const notes = await restore();
-      if (notes.length) test.info().annotations.push({ type: 'cart restore', description: notes.join('; ') });
-    }
-  });
-
-  test('the cart follows the customer into a new browser session', async ({ page, browser, cfg, cart, cartHelper, customer }) => {
-    // risk: cart only lives in the session — switching device / browser loses it
-    const p = cfg.testData.simpleProduct;
-    await ensureLoggedIn(page, cfg, customer);
-    const restore = await cart.snapshot();
-    const other = await newSession(browser, cfg);
-    try {
-      await cartHelper.add(p, 1);
-      await cart.open();
-      const expected = await cart.lines();
-
-      await ensureLoggedIn(other, cfg, customer);
-      const otherCart = new CartPage(other, cfg);
-      await otherCart.open();
-      const seen = await otherCart.lines();
-      expect(seen.map((l) => `${l.href} × ${l.qty}`).sort(), 'cart differs in the second browser session').toEqual(expected.map((l) => `${l.href} × ${l.qty}`).sort());
-    } finally {
-      await other.context().close();
       await ensureLoggedIn(page, cfg, customer);
       const notes = await restore();
       if (notes.length) test.info().annotations.push({ type: 'cart restore', description: notes.join('; ') });

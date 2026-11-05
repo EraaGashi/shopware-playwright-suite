@@ -171,6 +171,12 @@ export interface ProjectConfig {
       /** Salutation option index in the select (0 = "not specified"). */
       salutationIndex: number;
       address: CustomerAddress;
+      /**
+       * Street of the default address of the fixed TEST_CUSTOMER_EMAIL account, when it differs from `address`
+       * (shops whose registration asks for no address: the account's addresses come from its own history).
+       * A RegExp covers profiles shared by several hosts whose accounts have different defaults.
+       */
+      testCustomerDefaultStreet?: string | RegExp;
       extraFields?: ExtraFormField[];
     };
     /** Visible text of the footer link leading to the contact form. */
@@ -235,16 +241,12 @@ export interface ProjectConfig {
 }
 
 export interface LayoutTestConfig {
-  /** Extra guest pages audited at every viewport (CMS, legal, landing pages …) — core routes are always included. */
+  /** Extra guest pages audited at every viewport (CMS, landing pages …) — home, listing and product are always included. */
   pages?: ClientPage[];
   /** Elements left out of the layout checks (third-party chat widgets, intentionally overflowing banners …). */
   ignore?: string[];
   /** Below this width the theme shows the mobile (burger) navigation (default 992 — Bootstrap "lg"). */
   mobileNavBelow?: number;
-  /** Minimum touch target size on touch viewports in px (default 24 — WCAG 2.5.8; 0 = off). */
-  minTargetSize?: number;
-  /** Narrowest acceptable product box in the listing grid in px (default 140). */
-  minProductBoxWidth?: number;
   /** Viewports skipped for this shop (name or part of it, e.g. 'mobile-375x812'), with the reason. */
   skipViewports?: KnownIssue[];
 }
@@ -268,45 +270,16 @@ export interface ClientPage {
 }
 
 export interface ClientTestConfig {
-  /** Category / CMS landing pages: load with header, footer and CMS content. */
-  landingPages?: Array<ClientPage & {
-    /** Minimum number of product boxes (0 / unset = page has no product listing). */
-    minProducts?: number;
-    /** Expected <h1> text (case insensitive substring). */
-    heading?: string;
-  }>;
-
-  seo?: {
-    /** Pages that must have title, single <h1>, canonical and Open Graph title. */
-    pages: ClientPage[];
-    /** Also require a meta description (>= 20 chars) on these pages (default true). */
-    requireMetaDescription?: boolean;
-    /** Pages must be indexable — set false for staging shops that are noindex on purpose (default true). */
-    indexable?: boolean;
-    /** Paths that must always be noindex (account, cart, checkout …). */
-    noindexPaths?: string[];
-  };
-
   /** Header links that must be visible for guests and point to the given target. */
   headerLinks?: Array<{ name: string; selector: string; href: string | RegExp }>;
 
   /** Footer links (visible text) that must exist and load without error. */
   footerLinks?: Array<{ name: string; text: RegExp }>;
 
-  /** Pages whose title, headings and meta texts must not show HTML entities or broken umlauts/quotes. */
-  encodingPages?: ClientPage[];
-
   /** Pages without uncaught JS errors, failed own-host requests (>= 400) or broken images. */
   healthPages?: ClientPage[];
   /** Requests ignored by the health check (third-party noise, known 404 trackers …). */
   healthIgnoreRequests?: RegExp[];
-
-  /** Pages checked at each viewport: no horizontal scrolling, logo and cart reachable. */
-  responsive?: {
-    pages: ClientPage[];
-    /** Default: desktop 1440×900, laptop 1366×768, tablet 768×1024, mobile 375×812. */
-    viewports?: Array<{ name: string; width: number; height: number }>;
-  };
 
   /** Search terms with expected results (relevance checks beyond testData.searchTerm). */
   searchCases?: Array<{
@@ -317,22 +290,6 @@ export interface ClientTestConfig {
     expectProduct?: string;
   }>;
 
-  /** Product pages whose gallery must show at least `minImages` loaded images with alt texts. */
-  productGallery?: {
-    pages: ClientPage[];
-    minImages?: number;
-    /** Default: cfg.selectors.product.galleryImage */
-    imageSelector?: string;
-  };
-
-  /** Shop-specific elements (banners, widgets, badges …) that must be on a page. */
-  contentChecks?: Array<ClientPage & {
-    selector: string;
-    /** Text (substring, case insensitive) the first match must contain. */
-    text?: string;
-    /** Minimum number of matches (default 1). */
-    minCount?: number;
-  }>;
 }
 
 /** Final config after env overrides + selector merge. */

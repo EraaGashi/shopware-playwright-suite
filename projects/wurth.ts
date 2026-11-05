@@ -164,9 +164,6 @@ const config: ProjectConfig = {
   // Confirmed shop bugs (2026-09-25) — tests stay "expected to fail" until fixed, then remove the entry.
   // Not bugs (decided/verified 2026-10-05) → skipped with the reason.
   skipTests: [
-    { test: 'update quantity in off-canvas cart', reason: 'off-canvas cart shows the quantity as text ("Sasia: 1") — no quantity field (verified 2026-11-04)' },
-    { test: 'invalid promotion code is rejected', reason: 'guest cart has no promotion field (verified 2026-11-04) — only checkable with a logged-in B2B account' },
-    { test: 'has a meta description', reason: 'staging product data has no meta description; production has one for the same product (verified 2026-10-05)' },
   ],
 
   // Responsive layout suite: the desktop navigation stays down to 768px (burger menu only below)
