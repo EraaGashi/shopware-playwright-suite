@@ -13,6 +13,7 @@
     "test:crawl": "playwright test --grep @crawl --project=chromium",
     "test:responsive": "playwright test --grep @responsive --project=chromium",
     "test:security": "playwright test tests/storefront/security.spec.ts --project=chromium",
+    "test:mallstreet:image-bg": "BASE_URL=https://dev.themallstreet.com PROJECT=mallstreet playwright test tests/client/mallstreet-image-background.spec.ts --project=chromium",
     "test:headed": "playwright test --headed --project=chromium",
     "test:ui": "playwright test --ui",
     "test:list": "playwright test --list",
