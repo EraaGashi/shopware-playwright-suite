@@ -8,7 +8,9 @@
 
 **Expected:** The header's "Zurück zum Shop" button shows its label; the page fits the screen width.
 
-**Actual:** The button (`.header-minimal-back-to-shop-button`) is 46 px wide but its text needs 67 px — only "‹" is visible. The page is 4 px wider than the screen and scrolls sideways.
+**Actual:**
+- The button (`.header-minimal-back-to-shop-button`) is a 46 × 86 px box with `overflow: hidden`; its text needs 67 px, so only "‹" is visible in an otherwise empty box.
+- The page is 4 px wider than the screen (scrollWidth 379 at 375) and scrolls sideways: the `.row` around `.confirm-payment` / `.confirm-shipping` is 383 px wide — a Bootstrap row whose negative margins aren't compensated by a container.
 
 **Fails:** "Responsive layout mobile-375x812 › cart, off-canvas cart and guest checkout fit with a product in the cart".
 

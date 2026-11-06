@@ -13,3 +13,7 @@
 **Fix:** Add `alt` to the thumbnail images in the theme's gallery template.
 
 **Screenshot:** `reports/bugs/dinoparts-gallery-thumbnail-alt.png`
+
+**Fails:** "Accessibility › images have an alt attribute".
+
+**Checked:** 2026-11-06 (still open)

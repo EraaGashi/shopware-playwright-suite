@@ -1,14 +1,14 @@
-# [B&G] 404 pages are sent incomplete — the browser keeps loading
+# [B&G] Error pages (404, 400) never finish loading — Content-Length is 736 bytes too large
 
-**Page:** any unknown URL, e.g. http://maschinenprofi.de.cloud7-vm254.de-nserver.de/e2e-not-existing-1
+**Page:** any error page, e.g. http://maschinenprofi.de.cloud7-vm254.de-nserver.de/e2e-not-existing-1 (404) or `/search?search[]=e2e` (400)
 
 **Steps:**
-1. Open a URL that doesn't exist (or `curl -sS -o /dev/null <url>`).
+1. Open a URL that doesn't exist, or run `curl -sS -o /dev/null <url>`.
 
-**Expected:** A complete 404 page.
+**Expected:** The error page loads completely, like on DinoParts / Würth on the same server.
 
-**Actual:** The response announces `Content-Length: 158785` but only 158049 bytes arrive — always exactly 736 bytes short (`curl: (18) transfer closed with 736 bytes remaining to read`). The browser waits for the rest and the page never finishes loading. DinoParts and Würth on the same server send complete 404 pages, so this is specific to the B&G shop (something adds/removes output after the length was set, e.g. a plugin or response subscriber on the error page). Normal 200 pages are fine.
+**Actual:** The HTML that arrives is complete (it ends with `</html>`), but the response header announces 736 bytes more (`Content-Length: 158785`, 158049 bytes sent — `curl: (18) transfer closed with 736 bytes remaining to read`). The browser keeps waiting for the missing bytes: the page stays in "loading", `DOMContentLoaded` never fires, so Shopware's JavaScript (menu flyouts, search suggestions, off-canvas cart) never starts on error pages. Always exactly 736 bytes, on every error page — normal 200 pages are fine. Probably something changes the error page output after the length was set (a plugin / response subscriber).
 
-**Fails:** "unknown URL shows a 404 page with a way back", "unknown product URL returns 404", "error pages do not reveal debug information", "sensitive files are not served" (all time out on the 404 responses).
+**Fails:** "Error handling › unknown URL shows a 404 page with a way back", "Product detail page › unknown product URL returns 404".
 
-**Checked:** 2026-11-05
+**Checked:** 2026-11-06
