@@ -6,12 +6,17 @@ test.describe('Legal pages & footer', () => {
     test.skip(!required?.length, 'No testData.legalLinks configured for this shop');
     await page.goto(cfg.routes.home);
 
+    const urls = new Map<string, string>();
     for (const text of required!) {
       const link = page.locator(cfg.selectors.footer.link).filter({ hasText: text }).first();
       // soft: report every missing/empty legal page, not only the first
       await expect.soft(link, `footer link ${text} missing`).toBeAttached();
       if (!(await link.count())) continue;
       const url = new URL((await link.getAttribute('href'))!, cfg.baseURL).href;
+      // each legal text needs its own page — several links to one placeholder ("coming soon") are not legal pages
+      const same = urls.get(url);
+      expect.soft(same, `${text} → ${url} is the same page as ${same}`).toBeUndefined();
+      urls.set(url, String(text));
       const res = await request.get(url);
       expect.soft(res.status(), `${text} → ${url}`).toBe(200);
       // a real page, not an empty CMS shell

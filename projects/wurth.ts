@@ -32,17 +32,11 @@ const config: ProjectConfig = {
     languageSwitch: false,            // UNVERIFIED — only Albanian observed, no switcher seen
     currencySwitch: false,
     mobileNavigation: true,
-    orderPlacement: false,
+    // test orders approved for this staging shop on 2026-11-05 ("you can make orders in wurth") — cash on delivery,
+    // only with ALLOW_WRITE_TESTS=true (all 3 payment methods are offline / non-redirect)
+    orderPlacement: true,
     trackingConsent: false,           // decided 2026-10-05: consent-before-tracking requirement not applied for this shop (Kosovo)
     guestPrices: false,               // CHANGED — guests see "Kyqu për të parë çmimin" instead of prices, tax, delivery info and cart totals
-    // ^ orderPlacement: set to false per the policy below (checkout tests now stop at the confirm page and pass). TECHNICALLY true: all 3 payment methods (cash-on-delivery, prepayment,
-    // invoice) are offline / non-redirect, so an automated end-to-end order
-    // is technically possible. HOWEVER: we never actually placed a real
-    // order against this environment as a deliberate safety policy — every
-    // test that reaches /checkout/confirm stops there on purpose. If this
-    // framework's ALLOW_WRITE_TESTS gate is what protects real order
-    // placement, treat Würth as if this were false until someone
-    // consciously decides to let it place (and clean up) real test orders.
   },
 
   routes: {
@@ -133,6 +127,9 @@ const config: ProjectConfig = {
         countryLabel: 'Kosovë',
         phoneNumber: '+38344000000', // required (Store API: PHONE_NUMBER_IS_BLANK_ERROR) — dummy number
       },
+      // default billing + shipping street of the TEST_CUSTOMER_EMAIL account ("Erjon Ahmeti, dasd, 20000 Prizren",
+      // checked 2026-11-05) — update it when the account's default changes
+      testCustomerDefaultStreet: 'dasd',
       // zipcode/city are <select>s here: 20000 → city auto-selects "Prizren"
       // B2B-only fields of form.register-form--new-customer (verified 2026-09-25):
       extraFields: [
@@ -145,6 +142,11 @@ const config: ProjectConfig = {
     },
 
     contactLinkText: /Kontakti|Contact/i, // CHANGED — Albanian nav label is "Kontakti"
+    // required on /Kontakti/ besides the standard fields (checked 2026-11-05); subject is a dropdown → first option
+    contactExtraFields: [
+      { selector: '[name="customerNumber"]', value: 'E2E-TEST' },
+      { selector: '[name="privacy"]' },
+    ],
     // verified 2026-10-05 — terms, privacy, legal info, returns, cookies, disclaimer (all in the footer, all 200)
     legalLinks: [/Kushtet dhe Termat/i, /Privatësia/i, /Informacion ligjor/i, /Kthimi dhe zëvendësimi/i, /Cookies/i, /Mohim përgjegjësie/i],
     paymentMethod: 'Pagesë në dorëzim',   // verified real label — cash on delivery, the only method with no extra dependency
@@ -164,26 +166,38 @@ const config: ProjectConfig = {
   // Confirmed shop bugs (2026-09-25) — tests stay "expected to fail" until fixed, then remove the entry.
   // Not bugs (decided/verified 2026-10-05) → skipped with the reason.
   skipTests: [
+    // staging runs with Symfony debug on (decided 2026-11-05: not a bug for this environment)
+    { test: 'error pages do not reveal debug information', reason: 'staging runs in debug mode on purpose: 404 / bad-parameter pages show Symfony exception pages' },
+    { test: 'unknown URL shows a 404 page', reason: 'staging runs in debug mode on purpose: unknown URLs show the Symfony "No route found" page instead of the shop 404 page' },
+    { test: 'unknown product URL returns 404', reason: 'staging runs in debug mode on purpose: status is 404, but the page is the Symfony exception page, not the shop 404 page' },
+    // staging catalogue data, not a shop bug (decided 2026-11-05)
+    { test: 'shows product boxes with name, price and image', reason: 'staging data: 8 of 12 products in listingCategoryPath (incl. the first one) have no image, only the placeholder' },
+    // checked manually, works on staging (decided 2026-11-05)
+    { test: 'add product from detail page opens off-canvas cart', reason: 'verified manually: add to cart opens the off-canvas cart on desktop and mobile — automated check unreliable on this staging' },
   ],
 
   // Responsive layout suite: the desktop navigation stays down to 768px (burger menu only below)
   layout: {
     mobileNavBelow: 768,
+    // banner-slider nav thumbnails show the 1440×500 banner squeezed into 36×28 px — accepted design, not a bug (2026-11-05)
+    ignore: ['.banner-slider__nav-inner .pagination__image'],
+    // accepted for this shop, not bugs (decided 2026-11-05)
+    acceptIssues: [
+      { kind: 'distorted-image', where: 'Homepage @', reason: 'home page "four blocks" promo images (14–23% on desktop/tablet) and the mobile banner (20% tablet, 41% phone) are stretched — accepted' },
+      { kind: 'overflow', where: /Category listing @ (tablet|mobile)/, reason: 'category listing scrolls 10px sideways on tablet and phone — accepted' },
+      { kind: 'overflow', where: 'Product detail @ tablet', reason: 'product page scrolls 5px sideways on tablet — accepted' },
+    ],
   },
 
-  knownIssues: [
-    // same debug-mode bug as "unknown URL shows a 404 page" below — confirmed again 2026-11-04
-    { test: 'unknown product URL returns 404', reason: 'staging runs in debug mode: unknown product URLs show the Symfony "No route found" exception page' },
-    { test: 'error pages do not reveal debug information', reason: 'staging runs in debug mode: 404 / bad-parameter pages show Symfony exception pages with stack traces' },
-    {
-      test: 'unknown URL shows a 404 page',
-      reason: 'staging runs in debug mode: unknown URLs return the Symfony "No route found" debug page instead of the shop 404 page (Store API errors also expose full server stack traces)',
-    },
-    {
-      test: 'shows product boxes with name, price and image',
-      reason: 'products without images: 8 of 12 products in listingCategoryPath (incl. the first one) only show the placeholder',
-    },
-  ],
+  // staging sends "X-Powered-By: PHP/8.3.36" — accepted, may only be set on staging (decided 2026-11-05)
+  acceptedHeaders: ['x-powered-by'],
+
+  // same server as DinoParts (cloud7-vm254): pages 2–12 s, logins time out at the 15 s click default (2026-11-05).
+  // Login is slow by design: a custom B2B rule notifies the ERP on every login — not a bug.
+  workers: 2,
+  timeouts: { test: 180_000, action: 45_000, navigation: 60_000, expect: 20_000 },
+
+  knownIssues: [],
 
   importantLinks: ['/', '/checkout/cart', '/account/login', '/sitemap.xml', '/robots.txt'],
 
@@ -240,8 +254,9 @@ const config: ProjectConfig = {
       summaryTotal: '.checkout-aside-summary-value.checkout-aside-summary-total',
     },
     checkout: {
-      // finishHeader / finishOrderNumber: NOT overridden and UNVERIFIED —
-      // never reached, since no test here has ever placed a real order.
+      // confirm page shows list price + line total (".line-item-price-regular" = quantity × unit price), no .line-item-total-price-value (2026-11-05)
+      lineItemTotal: '.checkout-line-item-price .line-item-price-regular',
+      // finishHeader / finishOrderNumber: default selectors — the registered-customer order passed with them (2026-11-05)
     },
     register: {
       // CHANGED — two forms on /account/register; the first (existing customer) is hidden

@@ -58,8 +58,9 @@ export class CookieBanner extends BasePage {
     const host = new URL(baseURL).hostname;
     const consent = async () => (await this.page.context().cookies()).filter((c) => keep.test(c.name) && host.endsWith(c.domain.replace(/^\./, '')));
     // cookie-config-hash is written a moment after the click (not every shop sets it → give up after 5 s)
-    if (!rec) await expect.poll(async () => (await consent()).length, { timeout: 5_000 }).toBe(2).catch(() => undefined);
-    else {
+    const hasHash = async () => (await consent()).some((c) => c.name === 'cookie-config-hash');
+    await expect.poll(hasHash, { timeout: 5_000 }).toBe(true).catch(() => undefined);
+    if (rec) {
       // custom cookie list: written over a few moments → wait until it stops growing (max 8 s)
       let last = -1;
       for (let i = 0; i < 8; i++) {

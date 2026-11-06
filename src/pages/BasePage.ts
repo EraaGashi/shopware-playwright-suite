@@ -42,7 +42,7 @@ export abstract class BasePage {
    * Line items as sorted "label = total" strings, so cart and confirm page can be compared
    * regardless of their layout (same products, same line totals).
    */
-  protected async lineSummaryOf(items: Locator): Promise<string[]> {
+  protected async lineSummaryOf(items: Locator, totalSelector = this.s.cart.lineItemTotal): Promise<string[]> {
     const rows = await items.evaluateAll(
       (els, sel) =>
         els.map((el) => ({
@@ -50,7 +50,7 @@ export abstract class BasePage {
           label: (el.querySelector(sel.label)?.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/^\d+\s*[x×]\s+/i, ''),
           total: el.querySelector(sel.total)?.textContent ?? '',
         })),
-      { label: this.s.cart.lineItemLabel, total: this.s.cart.lineItemTotal },
+      { label: this.s.cart.lineItemLabel, total: totalSelector },
     );
     return rows.map((r) => `${r.label} = ${parsePrice(r.total).toFixed(2)}`).sort();
   }

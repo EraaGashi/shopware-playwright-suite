@@ -62,8 +62,7 @@ const config: ProjectConfig = {
     // main nav root links (desktop), in display order
     mainCategories: ["Women's", "Men's", 'Kids', 'Beauty', 'Home', 'Travel', 'Wellness'],
     listingCategoryPath: '/Women-s/',   // 130 products, sorting + manufacturer/property/price filters
-    // dev (verified 2026-10-26): 24 per page → p=2083 still 200, p=2084 → 500, i.e. the window is 50000 (Shopware default: 10000)
-    searchResultWindow: 50_000,
+    // deep-page tests stop at Shopware's default 10000 result window (p=417 with 24 per page → 200 on dev, 2026-11-05)
 
     // ⚠ No usable simple product: products without a configurator (Callie Pump, TEST …) cost $0.00
     // and get "No longer available from a seller" in the cart (no Mirakl offer). Same as Echonut,
@@ -131,12 +130,13 @@ const config: ProjectConfig = {
     { test: 'search suggest shows products while typing', reason: 'no header search; the inspiration search has no suggest dropdown' },
     { test: 'guest can add a product to the wishlist', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
     { test: 'wishlist page shows added product and allows removal', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
+    // remove once the legal texts are published
+    { test: 'mandatory legal pages are linked in the footer and load', reason: 'legal content not written yet: Terms & Conditions, Privacy policy and Returns & refund link to the /coming-soon placeholder (dev) or have only 13–15 words (cloud7) — 2026-11-05' },
   ],
 
   // Confirmed shop findings (2026-10-19) — tests stay "expected to fail" until fixed, then remove the entry.
   knownIssues: [
     { test: 'shows core product information', reason: 'PDP shows no product number and no tax notice (price "$98.00" without any tax hint); name, price, buy button, gallery and description are fine' },
-    { test: 'mandatory legal pages are linked in the footer and load', reason: 'Terms & Conditions, Privacy policy and Returns & refund load but have only 13–15 words of content' },
   ],
 
   redirects: [

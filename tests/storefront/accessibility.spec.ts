@@ -1,20 +1,21 @@
 import { test, expect } from '../../src/fixtures';
 import type { Locator } from '@playwright/test';
 import type { ResolvedConfig } from '../../src/config/types';
+import { withoutReportedBugs } from '../../src/utils/reported-bugs';
 
 /** Representative page types: CMS home, listing, product detail. */
 const keyPages = (cfg: ResolvedConfig) => [cfg.routes.home, cfg.testData.listingCategoryPath, cfg.testData.simpleProduct.path];
 
 test.describe('Accessibility', () => {
 
-  test('images have an alt attribute', async ({ page, cfg }) => {
+  test('images have an alt attribute', async ({ page, cfg }, testInfo) => {
     // alt="" is fine (decorative); a missing alt makes screen readers read the file name
     for (const path of keyPages(cfg)) {
       await page.goto(path, { waitUntil: 'load' });
       const missing = await page.locator('img:not([alt])').evaluateAll((imgs) =>
         (imgs as HTMLImageElement[]).filter((i) => i.getClientRects().length > 0).map((i) => i.currentSrc || i.src),
       );
-      expect.soft(missing, `${path}: visible images without alt attribute`).toEqual([]);
+      expect.soft(withoutReportedBugs(missing, cfg.reportedBugs?.imagesWithoutAlt, testInfo), `${path}: visible images without alt attribute`).toEqual([]);
     }
   });
 

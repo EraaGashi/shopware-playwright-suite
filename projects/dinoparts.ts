@@ -77,6 +77,8 @@ const config: ProjectConfig = {
       firstName: 'Erika',
       lastName: 'Tester',
       salutationIndex: 1,
+      // default address of the hand-made TEST_CUSTOMER account in .env (era.gashi@…, created 2026-11-05)
+      testCustomerDefaultStreet: 'test',
       address: {
         street: 'Teststraße 1',
         zipcode: '48624',
@@ -97,10 +99,28 @@ const config: ProjectConfig = {
   skipTests: [
     { test: 'variant switch updates product number and URL', reason: 'no configurable (variant) products found' },
     { test: 'expected filter types are available', reason: 'the product listing ("Neue Artikel") has no filter panel' },
+    // reCAPTCHA v3 scores the headless browser as a bot → the shop answers "Leider ist etwas schiefgelaufen".
+    // Customers for the other tests are registered through the Store API, which has no reCAPTCHA.
+    { test: /new customer can register|already registered e-mail is rejected|guest checkout places an order|valid submission shows a confirmation/, reason: 'form is protected by reCAPTCHA v3, which rejects automated submits' },
+    { test: /filter is kept when paging|price filter|property filter narrows|manufacturer filter narrows|applying a filter keeps|browser back removes the filter|filter and sorting are restored|a filtered URL opened directly|removing the filter chip|filters open in off-canvas/, reason: 'the product listing ("Neue Artikel") has no filter panel' },
   ],
 
   // reCAPTCHA forms (registration, contact, newsletter) need Shopware's _GRECAPTCHA consent cookie
   consentRecording: { button: 'onlyNecessary', keep: /^(cookie-preference|cookie-config-hash|_GRECAPTCHA)$/ },
+
+  // burger menu below 768px (Bootstrap "md"), desktop navigation from 768px
+  layout: {
+    mobileNavBelow: 768,
+  },
+
+  // staging answers in 4–40 s per page (2026-11-05); more parallel browsers only push it into timeouts
+  workers: 2,
+  // measured 2026-11-05: page GETs 3–34 s, login POST 7–30 s — the defaults (15 s click, 30 s goto, 60 s test)
+  // cut off requests that do succeed
+  timeouts: { test: 180_000, action: 45_000, navigation: 60_000, expect: 20_000 },
+
+  // staging sends "X-Powered-By: PHP/8.3.36" (same server as Würth) — accepted, may only be set on staging (decided 2026-11-05)
+  acceptedHeaders: ['x-powered-by'],
 
   redirects: [
     { from: '/account', to: '/account/login' },
@@ -125,6 +145,10 @@ const config: ProjectConfig = {
       tax: '.custom-text-black:has-text("MwSt")',                 // "Preise inkl. MwSt."
       description: '.desc-content',
       delivery: '.custom-stock-status',                           // "Auf Lager, sofort versandbereit" (the standard block is empty)
+    },
+    wishlist: {
+      // the .product-wishlist-remove wrapper is hidden — the visible ✕ is labelled "… vom Merkzettel entfernen"
+      remove: 'button[aria-label$="vom Merkzettel entfernen"]',
     },
   },
 };

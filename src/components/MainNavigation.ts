@@ -24,13 +24,15 @@ export class MainNavigation extends BasePage {
     const href = (await link.getAttribute('href')) ?? '';
     const target = new URL(href, this.cfg.baseURL).pathname;
     await link.click();
-    const navigated = await this.page
-      .waitForURL((u) => u.pathname === target, { timeout: 3_000 })
-      .then(() => true)
-      .catch(() => false);
+    // either the page changes or a dropdown opens — whichever comes first (slow shops need far more than 3 s to navigate)
+    const inFlyout = this.$(this.s.navigation.flyout).locator('visible=true').locator(`a[href="${href}"]`).first();
+    // each side swallows its own timeout: the loser of the race must not fail the test later
+    const navigated = await Promise.race([
+      this.page.waitForURL((u) => u.pathname === target).then(() => true, () => false),
+      inFlyout.waitFor({ state: 'visible' }).then(() => false, () => false),
+    ]);
     if (!navigated) {
       // dropdown opened → use the "show category" link inside the flyout
-      const inFlyout = this.$(this.s.navigation.flyout).locator('visible=true').locator(`a[href="${href}"]`).first();
       await Promise.all([this.page.waitForURL((u) => u.pathname === target), inFlyout.click()]);
     }
   }
@@ -51,9 +53,12 @@ export class MainNavigation extends BasePage {
   // --- mobile ---
   async openMobileMenu(): Promise<Locator> {
     const toggle = this.$(this.s.header.mobileMenuToggle).locator('visible=true').first();
-    await toggle.click();
     const oc = this.$(this.s.navigation.offcanvas).first();
-    await expect(oc).toBeVisible();
+    // on slow shops the button can be clicked before the off-canvas plugin is bound → click again
+    await expect(async () => {
+      if (!(await oc.isVisible())) await toggle.click();
+      await expect(oc).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 20_000 });
     // Shopware lazy-loads the menu content (/widgets/menu/offcanvas)
     await expect(oc.locator('a').first()).toBeVisible();
     return oc;

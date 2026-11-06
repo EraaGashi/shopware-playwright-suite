@@ -4,6 +4,11 @@ import { loadConfig } from './src/config/loader';
 const cfg = loadConfig();
 const isCI = !!process.env.CI;
 
+// ENV_FILE=.env.wurth → own report/result folders (playwright-report-wurth, test-results-wurth) so shops can run in parallel
+const runTag = process.env.ENV_FILE?.replace(/^.*\.env\.?/, '');
+const reportDir = runTag ? `playwright-report-${runTag}` : 'playwright-report';
+const resultsDir = runTag ? `test-results-${runTag}` : 'test-results';
+
 const extraBrowsers = (process.env.EXTRA_BROWSERS ?? '')
   .split(',')
   .map((b) => b.trim())
@@ -36,14 +41,15 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 2 : undefined,
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
+  workers: isCI ? 2 : cfg.workers,
+  outputDir: resultsDir,
+  timeout: cfg.timeouts?.test ?? 60_000,
+  expect: { timeout: cfg.timeouts?.expect ?? 10_000 },
 
   // redact-secrets must stay LAST: it scrubs secrets from the files the reporters before it have written
   reporter: isCI
-    ? [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'test-results/junit.xml' }], ['./src/reporters/redact-secrets.ts']]
-    : [['list'], ['html', { open: 'on-failure' }], ['./src/reporters/redact-secrets.ts']],
+    ? [['list'], ['html', { open: 'never', outputFolder: reportDir }], ['junit', { outputFile: `${resultsDir}/junit.xml` }], ['./src/reporters/redact-secrets.ts']]
+    : [['list'], ['html', { open: runTag ? 'never' : 'on-failure', outputFolder: reportDir }], ['./src/reporters/redact-secrets.ts']],
 
   metadata: { project: cfg.name, baseURL: cfg.baseURL },
 
@@ -54,8 +60,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    actionTimeout: 15_000,
-    navigationTimeout: 30_000,
+    actionTimeout: cfg.timeouts?.action ?? 15_000,
+    navigationTimeout: cfg.timeouts?.navigation ?? 30_000,
   },
 
   projects: [

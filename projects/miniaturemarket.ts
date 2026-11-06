@@ -4,7 +4,10 @@ import type { ProjectConfig } from '../src/config/types';
  * Miniature Market — staging (swstaging.miniaturemarket.com), Shopware 6 storefront with a custom theme.
  * Locators and test data taken from the live staging HTML on 2026-11-02 (no source code access).
  *
- *   PROJECT=miniaturemarket ALLOW_WRITE_TESTS=false npx playwright test
+ *   PROJECT=miniaturemarket npx playwright test --workers=1
+ *
+ * Not read-only: write tests (registration, test customers) and test orders are allowed on this staging shop
+ * (approved 2026-11-05); orders are paid with the offline "Check Order" method.
  *
  * Board-game shop in USD: no configurable (variant) products found, no tax line on the PDP (US prices),
  * no contact form (support page is CMS only). The site is slow — the first page load can take 20 s+.
@@ -19,7 +22,7 @@ const config: ProjectConfig = {
     wishlist: true,                  // header wishlist link; /wishlist redirects to /note
     guestCheckout: true,
     registration: true,
-    doubleOptInRegistration: false,  // unverified — write tests not run yet
+    doubleOptInRegistration: false,  // unverified — check with the first write-test run
     productReviews: true,            // "Product Reviews" tab on the PDP
     contactForm: false,              // /customer-support is a CMS page without form[action="/form/contact"]
     newsletter: false,               // "Subscribe" goes to Klaviyo (external)
@@ -28,7 +31,9 @@ const config: ProjectConfig = {
     languageSwitch: false,
     currencySwitch: false,
     mobileNavigation: true,
-    orderPlacement: false,           // never place orders until an offline test payment method is confirmed
+    // test orders approved 2026-11-05 ("you can make orders at miniature market") — paid with the offline "Check Order"
+    // method (no payment provider), only with ALLOW_WRITE_TESTS=true
+    orderPlacement: true,
   },
 
   routes: {
@@ -74,19 +79,25 @@ const config: ProjectConfig = {
       firstName: 'Erika',
       lastName: 'Tester',
       salutationIndex: 1,
+      // must be a real, verifiable US address: the shop validates it for tax calculation and rejects made-up ones
+      // ("We could not verify this address…", 2026-11-05) — same public business address as the fixed test account
       address: {
-        street: '1 Test Street',
-        zipcode: '63119',
-        city: 'Webster Groves',
+        street: '500 S Buena Vista St',
+        zipcode: '91521',
+        city: 'Burbank',
         countryIso: 'US',
         countryLabel: 'United States',
         phoneNumber: '3145550100',   // required by the registration form
-        state: 'Missouri',
+        state: 'California',
       },
+      // default billing + shipping street of the TEST_CUSTOMER_EMAIL account ("Era Gashi, 500 S Buena Vista St,
+      // Burbank", checked 2026-11-05) — update it when the account's default changes
+      testCustomerDefaultStreet: '500 S Buena Vista St',
     },
     contactLinkText: /Contact Us|Customer Support/i,
     legalLinks: [/Privacy Policy/i, /Terms of Use/i],
-    paymentMethod: null,
+    // offline payment (pay by check) — the default Google Pay hides "Submit order" (checked 2026-11-05)
+    paymentMethod: 'Check Order',
     shippingMethod: null,
     promotionCode: null,
     // Reviews.io in the "Product Reviews" tab instead of Shopware's review teaser
@@ -94,12 +105,33 @@ const config: ProjectConfig = {
     reviewWidget: { tab: 'a[id^="review-tab-"]', tabText: 'Product Reviews', root: '#reviews-io-polaris-modal-ReviewsWidget, [id^="reviews-io"]' },
   },
 
+  // staging rate-limits (429 "Too many requests") with several browsers at once; the mobile guest
+  // checkout needs more than the 60 s default (2026-11-05)
+  workers: 1,
+  timeouts: { test: 120_000, navigation: 45_000 },
+
   // Not applicable for this shop (verified 2026-11-02) → skipped with the reason.
   skipTests: [
     { test: 'variant switch updates product number and URL', reason: 'no configurable (variant) products in the catalog' },
     { test: 'guest can add a product to the wishlist', reason: '"My Notes" multi-list wishlist: adding opens a list-picker dialog, no header counter' },
     { test: 'wishlist page shows added product and allows removal', reason: '"My Notes" multi-list wishlist (/note), not Shopware\'s single wishlist' },
+    // reported bug, not "not applicable": the whole test is about it (reports/bugs-miniaturemarket-2026-11-05.md #2)
+    { test: 'pages beyond the real end of the listing do not cause a server error', reason: 'reported bug #2 (2026-11-05): p=417+ (past the 10,000 search result window) returns 500' },
+    { test: 'pages beyond the real end of the search results do not cause a server error', reason: 'reported bug #2 (2026-11-05): p=417+ (past the 10,000 search result window) returns 500' },
   ],
+
+  // Reported 2026-11-05 (reports/bugs-miniaturemarket-2026-11-05.md) — only these URLs are left out, the rest is still checked.
+  // Remove an entry once the shop is fixed.
+  reportedBugs: {
+    brokenLinks: [
+      { match: '/retail-stl', reason: 'reported bug #1 (2026-11-05): header/footer link returns 500' },
+    ],
+    imagesWithoutAlt: [
+      { match: '11-14-2025_Emberleaf_Slider_800x800', reason: 'reported bug #4 (2026-11-05): CMS promo image without alt' },
+      { match: '7-01-2025_Gift-Card_RIR_1920x1920', reason: 'reported bug #4 (2026-11-05): CMS promo image without alt' },
+      { match: '7-01-2025_BuyBack_RIR_800x800', reason: 'reported bug #4 (2026-11-05): CMS promo image without alt' },
+    ],
+  },
 
   // Confirmed on staging 2026-11-02 — tests stay "expected to fail" until fixed, then remove the entry.
   knownIssues: [
@@ -120,6 +152,10 @@ const config: ProjectConfig = {
     ignore: ['.userway_p1, #userwayAccessibilityIcon, .uwy', '.needsclick.kl-private-reset-css-Xuajs1, [class*="kl-private"]', '#launcher' /* Zendesk chat button */,
       // product cards: the name link is stretched over the card; on real phones the buttons still work (manual check 2026-11-04)
       '.product-box .product-name.stretched-link'],
+    // reported bug #3 (2026-11-05): .checkout-container and .header-minimal-row are 5px wider than the screen — remove once fixed
+    acceptIssues: [
+      { kind: 'overflow', where: /^(Cart with product|Checkout \(guest step\)) @ (tablet|mobile)/, reason: 'reported bug #3 (2026-11-05): cart and guest checkout scroll 5px sideways' },
+    ],
   },
 
   redirects: [
@@ -150,6 +186,8 @@ const config: ProjectConfig = {
       tax: '',                                            // US prices: no tax notice on the PDP
       wishlistButton: '.pdp-wishlist .product-wishlist-btn',   // the first match is the hidden mobile copy
       delivery: '',                                       // the delivery-information block is rendered empty
+      // buy box has a desktop and a mobile quantity field — only one is shown per screen size (2026-11-05)
+      quantityInput: '.product-detail-buy .js-quantity-selector:visible',
     },
     header: {
       // the account dropdown holds a login form instead of a "Log in" link
@@ -163,6 +201,18 @@ const config: ProjectConfig = {
       // promotion field is collapsed behind "Discount code"
       promotionReveal: 'button[aria-controls="discountCollapse"]',
       promotionSubmit: 'form.cart-add-promotion button[type="submit"]',   // "Apply"
+    },
+    account: {
+      // no account sidebar on the account pages — the navigation (9 .account-aside-item links) lives in the header dropdown (2026-11-05)
+      aside: '.account-menu-dropdown',
+    },
+    checkout: {
+      // confirm page renders every product twice: a hidden copy in .checkout-main + the visible sidebar list (2026-11-05)
+      lineItem: '.checkout-aside-product-list .line-item-product',
+      // Braintree's Google Pay hides "Submit order" (d-none) and renders its own "Buy with GPay" button (2026-11-05)
+      paymentButtons: '[data-swag-paypal-smart-payment-buttons], button[aria-label*="GPay" i], .gpay-button, .gpay-card-info-container',
+      // only 5 payment methods are shown — "Check Order" sits behind "Show more" (a toggle → match it only while collapsed) (2026-11-05)
+      paymentReveal: '.confirm-checkout-collapse-trigger:has-text("Show more")',
     },
     search: {
       emptyAlert: '.no-results-content',                  // "We're Sorry! We cannot find any products …"

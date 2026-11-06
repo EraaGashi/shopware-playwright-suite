@@ -96,6 +96,12 @@ export interface KnownIssue {
   reason: string;
 }
 
+/** A reported shop bug excluded from one check: URL substring (or RegExp) and the ticket / reason. */
+export interface ReportedBug {
+  match: string | RegExp;
+  reason: string;
+}
+
 export interface ProjectConfig {
   /** Human readable name, shown in reports. */
   name: string;
@@ -143,11 +149,6 @@ export interface ProjectConfig {
     mainCategories: string[];
     /** A category with enough products for listing / filter / sorting tests. */
     listingCategoryPath: string;
-    /**
-     * Search engine `max_result_window` of the shop (default 10000, Shopware's setting). The deep-page
-     * tests request the first page past it — set it when the shop raised the limit.
-     */
-    searchResultWindow?: number;
     /** A simple (non-variant) product that can be bought. */
     simpleProduct: ProductRef;
     /** A product with variants (configurator). */
@@ -181,6 +182,11 @@ export interface ProjectConfig {
     };
     /** Visible text of the footer link leading to the contact form. */
     contactLinkText: RegExp;
+    /**
+     * Shop-specific required fields of the contact form (customer number, privacy checkbox …), filled after the
+     * standard ones: text fields get `value`, selects the option with that value/label (unset = first), checkboxes are ticked.
+     */
+    contactExtraFields?: ExtraFormField[];
     /** Footer link texts of mandatory legal pages (terms, privacy, withdrawal, imprint …). Unset = test skipped. */
     legalLinks?: RegExp[];
     /**
@@ -216,11 +222,25 @@ export interface ProjectConfig {
   /** Selector overrides for themes / customisations. Merged over Shopware 6.7 defaults. */
   selectors?: DeepPartial<Selectors>;
 
+  /** Response headers accepted for this shop although they reveal the server stack (e.g. 'x-powered-by' on staging). */
+  acceptedHeaders?: Array<'x-powered-by' | 'server'>;
+
   /** Confirmed shop bugs → matching tests are expected to fail (see KnownIssue). */
   knownIssues?: KnownIssue[];
 
   /** Tests that don't apply to this shop (intended behaviour, not a bug) → skipped with the reason. */
   skipTests?: KnownIssue[];
+
+  /**
+   * Already reported shop bugs left out of a single check, so the rest of the test keeps running.
+   * Each match is noted on the test as an "accepted" annotation — remove the entry once the shop is fixed.
+   */
+  reportedBugs?: {
+    /** Header/footer link URLs not checked by the broken-links test. */
+    brokenLinks?: ReportedBug[];
+    /** Image URLs allowed to have no alt attribute. */
+    imagesWithoutAlt?: ReportedBug[];
+  };
 
   /** Data for the configurable client tests in tests/client/ (each section unset = its tests skip). */
   client?: ClientTestConfig;
@@ -238,6 +258,15 @@ export interface ProjectConfig {
 
   /** Responsive layout suite (tests/storefront/responsive-layout.spec.ts); works with the defaults when unset. */
   layout?: LayoutTestConfig;
+
+  /** Parallel workers for local runs (default: half the CPU cores) — lower it for slow staging servers. CI always uses 2. */
+  workers?: number;
+
+  /**
+   * Timeouts in ms for slow servers (defaults: test 60 s, action 15 s, navigation 30 s, expect 10 s).
+   * The action timeout also covers a click that waits for the form POST it triggers.
+   */
+  timeouts?: { test?: number; action?: number; navigation?: number; expect?: number };
 }
 
 export interface LayoutTestConfig {
@@ -249,6 +278,17 @@ export interface LayoutTestConfig {
   mobileNavBelow?: number;
   /** Viewports skipped for this shop (name or part of it, e.g. 'mobile-375x812'), with the reason. */
   skipViewports?: KnownIssue[];
+  /**
+   * Findings accepted for this shop (not bugs) — that check is left out, with the reason as annotation.
+   * `where` matches "<page> @ <viewport>", e.g. 'Homepage @' or /Category listing @ (tablet|mobile)/.
+   */
+  acceptIssues?: AcceptedLayoutIssue[];
+}
+
+export interface AcceptedLayoutIssue {
+  kind: 'overflow' | 'cut-off' | 'clipped-text' | 'covered' | 'fixed-cover' | 'small-target' | 'distorted-image';
+  where: string | RegExp;
+  reason: string;
 }
 
 export interface CrawlConfig {

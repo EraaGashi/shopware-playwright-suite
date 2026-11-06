@@ -34,8 +34,10 @@ test.describe('Security', () => {
     if (cfg.baseURL.startsWith('https://')) {
       expect.soft(h['strict-transport-security'] ?? '', 'Strict-Transport-Security (HSTS)').toMatch(/max-age=[1-9]\d*/);
     }
-    expect.soft(h['x-powered-by'] ?? '', 'X-Powered-By reveals the server stack').toBe('');
-    expect.soft(h['server'] ?? '', 'Server header reveals a version number').not.toMatch(/\d+\.\d+/);
+    const accepted = cfg.acceptedHeaders ?? [];
+    if (accepted.length) test.info().annotations.push({ type: 'accepted', description: `not checked for this shop: ${accepted.join(', ')}` });
+    if (!accepted.includes('x-powered-by')) expect.soft(h['x-powered-by'] ?? '', 'X-Powered-By reveals the server stack').toBe('');
+    if (!accepted.includes('server')) expect.soft(h['server'] ?? '', 'Server header reveals a version number').not.toMatch(/\d+\.\d+/);
   });
 
   test('session cookie is HttpOnly, Secure and SameSite', async ({ page, context, cfg }) => {

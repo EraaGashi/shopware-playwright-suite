@@ -34,7 +34,9 @@ export class CheckoutPage extends BasePage {
     await this.expectPath(this.cfg.routes.checkoutConfirm);
     await expect(this.$(this.s.checkout.confirmForm).first()).toBeAttached();
     // payment plugins (e.g. PayPal) hide the core submit button and render their own
-    if (this.cfg.features.orderPlacement) await expect(this.submitButton).toBeVisible();
+    if (this.cfg.features.orderPlacement) {
+      await expect(this.submitButton.locator('visible=true').or(this.$(this.s.checkout.paymentButtons)).first()).toBeVisible();
+    }
   }
 
   /** The order can be handed off: core submit button visible, or a payment plugin rendered its own buttons. */
@@ -94,13 +96,18 @@ export class CheckoutPage extends BasePage {
   }
 
   // ---------- totals & line items (confirm page uses the same aside as the cart) ----------
+  /** Line total on the confirm page — the cart's selector unless the theme renders it differently there. */
+  private get lineItemTotal(): string {
+    return this.s.checkout.lineItemTotal || this.s.cart.lineItemTotal;
+  }
+
   async lineSummary(): Promise<string[]> {
-    return this.lineSummaryOf(this.lineItems);
+    return this.lineSummaryOf(this.lineItems, this.lineItemTotal);
   }
 
   async lineTotalOf(name: string): Promise<number> {
     const line = this.lineItems.filter({ hasText: name }).first();
-    return parsePrice(await line.locator(this.s.cart.lineItemTotal).first().innerText());
+    return parsePrice(await line.locator(this.lineItemTotal).first().innerText());
   }
 
   async totalValue(): Promise<number> {

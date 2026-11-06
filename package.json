@@ -6,6 +6,7 @@
   "scripts": {
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",
+    "test:all": "bash scripts/run-all.sh",
     "test:regression": "playwright test --grep-invert @mobile",
     "test:mobile": "playwright test --project=mobile",
     "test:client": "playwright test tests/client",
