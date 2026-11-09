@@ -256,6 +256,12 @@ export interface ProjectConfig {
    */
   consentRecording?: { button?: 'acceptAll' | 'onlyNecessary'; keep: RegExp };
 
+  /**
+   * Popups the shop opens on its own (e.g. a newsletter sign-up on page load) that cover the page — closed
+   * whenever they show up before a click/fill/assertion, so they don't block the functional tests.
+   */
+  dismissPopups?: Array<{ popup: string; /** inside the popup */ close: string }>;
+
   /** Responsive layout suite (tests/storefront/responsive-layout.spec.ts); works with the defaults when unset. */
   layout?: LayoutTestConfig;
 

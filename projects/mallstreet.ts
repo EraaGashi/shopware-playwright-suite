@@ -68,9 +68,10 @@ const config: ProjectConfig = {
     // and get "No longer available from a seller" in the cart (no Mirakl offer). Same as Echonut,
     // a variant child with a live offer stands in. The reference suite's Lodge Hoodie is sold out.
     // 2026-11-02: Breeze Tutu Skirt (PTE7039301) lost its offer → Arahi 8 ($99.99, ordered in test order #10203)
+    // 2026-11-09: 1168690011 (Varsity Navy US 9.5 Wide) shows "(Unavailable)" → Varsity Navy US 8 Regular, which has an offer
     simpleProduct: {
-      path: '/Arahi-8/1168690011',
-      productNumber: '1168690011',
+      path: '/Arahi-8/1168690001',
+      productNumber: '1168690001',
       name: 'Arahi 8',
     },
 
@@ -138,6 +139,10 @@ const config: ProjectConfig = {
   knownIssues: [
     { test: 'shows core product information', reason: 'PDP shows no product number and no tax notice (price "$98.00" without any tax hint); name, price, buy button, gallery and description are fine' },
   ],
+
+  // dev 2026-11-09: a "Subscribe our newsletter" modal opens on every page load (also after closing it — nothing
+  // remembers the close) and covers the whole page
+  dismissPopups: [{ popup: '.modal.show:has-text("Subscribe our newsletter")', close: 'button[aria-label="Close"], .btn-close' }],
 
   redirects: [
     { from: '/account', to: '/account/login' },

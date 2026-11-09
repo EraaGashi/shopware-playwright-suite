@@ -125,6 +125,8 @@ const config: ProjectConfig = {
   reportedBugs: {
     brokenLinks: [
       { match: '/retail-stl', reason: 'reported bug #1 (2026-11-05): header/footer link returns 500' },
+      // not a shop bug: 302 to the external careers portal secure.ipsonline.net, which answers automated requests with 403 (same on production) — 2026-11-09
+      { match: /\/jobs$/, reason: 'redirects to the external careers portal (ipsonline), which blocks automated requests with 403' },
     ],
     imagesWithoutAlt: [
       { match: '11-14-2025_Emberleaf_Slider_800x800', reason: 'reported bug #4 (2026-11-05): CMS promo image without alt' },

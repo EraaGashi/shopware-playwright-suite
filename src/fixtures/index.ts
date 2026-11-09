@@ -16,6 +16,7 @@ import { AccountPage } from '../pages/AccountPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 import { ContactPage } from '../pages/ContactPage';
 import { bypassHeaders, routeBypassHeader } from '../utils/http';
+import { autoClosePopups } from '../utils/popups';
 
 /** Fast storefront cart setup through the storefront's own form endpoint (shares the browser session). */
 export class CartHelper {
@@ -126,6 +127,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await routeBypassHeader(context, cfg);
     if (acceptCookies && cfg.features.cookieBanner) await CookieBanner.preAccept(context, cfg.baseURL);
     await use(context);
+  },
+
+  page: async ({ page, cfg }, use) => {
+    await autoClosePopups(page, cfg);
+    await use(page);
   },
 
   header: async ({ page, cfg }, use) => use(new Header(page, cfg)),

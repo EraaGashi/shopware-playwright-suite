@@ -3,6 +3,7 @@ import { test, expect } from '../../src/fixtures';
 import { loadConfig } from '../../src/config/loader';
 import type { ClientPage, ResolvedConfig } from '../../src/config/types';
 import { attachEvidence, auditLayout, formatIssues, settle, stickyCoverage, type LayoutIssue } from '../../src/utils/layout';
+import { closePopups } from '../../src/utils/popups';
 
 /**
  * Responsive layout suite: the key pages (home, listing, product), the navigation and the cart / checkout
@@ -98,6 +99,7 @@ async function open(page: Page, path: string): Promise<void> {
   test.skip(/just a moment/i.test(await page.title()), 'Inconclusive: Cloudflare bot challenge answered (run headed or allowlist the runner)');
   test.skip(status === 404 || status === 410, `${path} answered ${status} — page/data not available on this shop, layout not checkable`);
   expect(status, `${path} answered HTTP ${status}`).toBeLessThan(400);
+  await closePopups(page, loadConfig());
   await settle(page);
 }
 
