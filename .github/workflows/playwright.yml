@@ -1,56 +1,118 @@
+# GitHub Actions — Shopware Playwright suite, one job per shop (same idea as bitbucket-pipelines.yml)
+#
+# Setup (once): Settings → Environments → create one environment per shop, named exactly like its profile in
+# projects/:  mallstreet, wurth, miniaturemarket, dinoparts, bg
+# Each environment holds that shop's .env values — same names as locally / in Bitbucket:
+#   Variables:  BASE_URL (required — a shop without it is skipped), ALLOW_WRITE_TESTS, CLEANUP_TEST_DATA,
+#               WORKERS (1 for shops that answer 429, e.g. Miniature Market), HEADED, E2E_HEADER_NAME
+#   Secrets:    ADMIN_CLIENT_ID + ADMIN_CLIENT_SECRET (or ADMIN_USERNAME + ADMIN_PASSWORD), HTTP_USERNAME + HTTP_PASSWORD,
+#               TEST_CUSTOMER_EMAIL + TEST_CUSTOMER_PASSWORD, SW_ACCESS_KEY, E2E_HEADER_VALUE
+# ALLOW_WRITE_TESTS / CLEANUP_TEST_DATA are "false" here unless the environment sets them to "true" — read-only by default.
+#
+# Each job runs ci/e2e.sh. Reports: open the run → Artifacts (playwright-report-<shop>).
+
 name: Playwright E2E
 
 on:
+  # every pull request and every push to main → smoke tests on every shop
   pull_request:
   push:
     branches: [main]
+  # nightly full regression on every shop (03:00 UTC)
   schedule:
-    - cron: '0 3 * * *' # nightly full regression
+    - cron: '0 3 * * *'
+  # by hand: Actions → Playwright E2E → Run workflow
   workflow_dispatch:
     inputs:
+      shop:
+        description: 'Shop (all = every shop)'
+        type: choice
+        options: [all, mallstreet, wurth, miniaturemarket, dinoparts, bg]
+        default: all
+      mode:
+        description: 'smoke = @smoke on chromium, full = every test'
+        type: choice
+        options: [full, smoke]
+        default: full
       grep:
-        description: 'Only run tests matching (e.g. @smoke)'
+        description: 'Only tests matching (e.g. @checkout or "Product search"); empty = all'
         required: false
+
+permissions:
+  contents: read
 
 jobs:
   e2e:
+    name: ${{ matrix.shop }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # keep the tag in sync with @playwright/test in package.json
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
+    environment: ${{ matrix.shop }}
+    timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.mode == 'full') && 120 || 30 }}
+    concurrency:
+      group: e2e-${{ matrix.shop }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     strategy:
       fail-fast: false
+      # Würth, DinoParts, B&G and Mall Street cloud7 share one staging server → don't hit it with everything at once
+      max-parallel: 3
       matrix:
-        shard: [1, 2]
+        # by hand with one shop picked → only that shop
+        shop: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.shop != 'all') && format('["{0}"]', inputs.shop) || '["mallstreet","wurth","miniaturemarket","dinoparts","bg"]') }}
     env:
       CI: 'true'
-      PROJECT: ${{ vars.PROJECT || 'demo' }}
+      HOME: /root
+      PROJECT: ${{ matrix.shop }}
       BASE_URL: ${{ vars.BASE_URL }}
+      ALLOW_WRITE_TESTS: ${{ vars.ALLOW_WRITE_TESTS || 'false' }}
+      CLEANUP_TEST_DATA: ${{ vars.CLEANUP_TEST_DATA || 'false' }}
+      WORKERS: ${{ vars.WORKERS }}
+      HEADED: ${{ vars.HEADED }}
+      E2E_HEADER_NAME: ${{ vars.E2E_HEADER_NAME }}
+      E2E_HEADER_VALUE: ${{ secrets.E2E_HEADER_VALUE }}
       HTTP_USERNAME: ${{ secrets.HTTP_USERNAME }}
       HTTP_PASSWORD: ${{ secrets.HTTP_PASSWORD }}
       ADMIN_CLIENT_ID: ${{ secrets.ADMIN_CLIENT_ID }}
       ADMIN_CLIENT_SECRET: ${{ secrets.ADMIN_CLIENT_SECRET }}
       ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      TEST_CUSTOMER_EMAIL: ${{ secrets.TEST_CUSTOMER_EMAIL }}
+      TEST_CUSTOMER_PASSWORD: ${{ secrets.TEST_CUSTOMER_PASSWORD }}
       SW_ACCESS_KEY: ${{ secrets.SW_ACCESS_KEY }}
-      HOME: /root
+      TEST_GREP: ${{ inputs.grep }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Run tests
+      - name: Check the shop's environment is set up
+        id: ready
         run: |
-          GREP="${{ github.event.inputs.grep }}"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then GREP="@smoke"; fi
-          npx playwright test ${GREP:+--grep "$GREP"} --shard=${{ matrix.shard }}/2
+          if [ -z "$BASE_URL" ]; then
+            echo "::warning title=${PROJECT} skipped::Environment '${PROJECT}' has no BASE_URL variable — add the shop's settings under Settings → Environments → ${PROJECT}."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.ok == 'true'
+
+      - name: Run tests
+        if: steps.ready.outputs.ok == 'true'
+        run: bash ci/e2e.sh "${{ (github.event_name == 'schedule' || inputs.mode == 'full') && 'full' || 'smoke' }}"
+
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.ready.outputs.ok == 'true'
         with:
-          name: playwright-report-${{ matrix.shard }}
+          name: playwright-report-${{ matrix.shop }}
           path: |
             playwright-report/
             test-results/
           retention-days: 14
+
+      - name: Test summary
+        if: always() && steps.ready.outputs.ok == 'true'
+        run: |
+          f=test-results/junit.xml
+          [ -f "$f" ] || exit 0
+          t=$(grep -o 'tests="[0-9]*"' "$f" | head -1 | tr -dc 0-9); fl=$(grep -o 'failures="[0-9]*"' "$f" | head -1 | tr -dc 0-9)
+          s=$(grep -o 'skipped="[0-9]*"' "$f" | head -1 | tr -dc 0-9)
+          echo "### ${PROJECT}: ${t} tests — ${fl} failed, ${s} skipped" >> "$GITHUB_STEP_SUMMARY"

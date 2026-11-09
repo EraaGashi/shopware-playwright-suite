@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Runs the suite for ONE shop inside Bitbucket Pipelines (called from bitbucket-pipelines.yml).
+# Runs the suite for ONE shop in CI (called from bitbucket-pipelines.yml and .github/workflows/playwright.yml).
 #   bash ci/e2e.sh smoke   → @smoke tests, chromium only
 #   bash ci/e2e.sh full    → every test: setup, chromium + mobile, all 3 responsive viewports, cleanup
-# The shop's settings (BASE_URL, credentials …) come from the step's deployment environment;
-# PROJECT defaults to the environment's name (mallstreet, echonut, wurth).
+# The shop's settings (BASE_URL, credentials …) come from the step's deployment environment (Bitbucket) or the
+# job's environment (GitHub); PROJECT defaults to the Bitbucket environment's name, GitHub sets it per job.
 set -euo pipefail
 
 MODE="${1:-full}"
