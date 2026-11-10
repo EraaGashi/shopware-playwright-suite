@@ -115,7 +115,6 @@ const config: ProjectConfig = {
       // behalf), so this is flagged, not fixed.
       emailDomain: 'example.com',
       emailPrefix: 'e2e',
-      password: 'Shopware-E2E-2026!',
       firstName: 'Erika',
       lastName: 'Tester',
       salutationIndex: 1,           // UNVERIFIED — registration form was never opened

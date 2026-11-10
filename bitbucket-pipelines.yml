@@ -6,7 +6,8 @@
 #      Each environment's variables are that shop's .env values — same names:
 #        BASE_URL, ALLOW_WRITE_TESTS, CLEANUP_TEST_DATA,
 #        ADMIN_CLIENT_ID + ADMIN_CLIENT_SECRET (or ADMIN_USERNAME + ADMIN_PASSWORD),
-#        HTTP_USERNAME + HTTP_PASSWORD, TEST_CUSTOMER_EMAIL + TEST_CUSTOMER_PASSWORD, SW_ACCESS_KEY
+#        HTTP_USERNAME + HTTP_PASSWORD, TEST_CUSTOMER_EMAIL + TEST_CUSTOMER_PASSWORD, SW_ACCESS_KEY,
+#        NEW_CUSTOMER_PASSWORD (optional — random per registered test customer if unset)
 #      Mark passwords / secrets as "Secured". Optional: HEADED=true (bot protection that blocks headless browsers),
 #      E2E_HEADER_VALUE (Secured) + E2E_HEADER_NAME (default x-e2e-bypass): secret header for a bot-protection
 #      skip rule (e.g. Cloudflare WAF) — sent to the shop's own host only.

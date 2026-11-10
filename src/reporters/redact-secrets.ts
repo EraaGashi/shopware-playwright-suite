@@ -14,7 +14,7 @@ import type { FullConfig, Reporter } from '@playwright/test/reporter';
  */
 
 /** Env variables whose values must never appear in artifacts. */
-const SECRET_VARS = ['E2E_HEADER_VALUE', 'HTTP_PASSWORD', 'ADMIN_CLIENT_SECRET', 'ADMIN_PASSWORD', 'TEST_CUSTOMER_PASSWORD', 'SW_ACCESS_KEY'];
+const SECRET_VARS = ['E2E_HEADER_VALUE', 'HTTP_PASSWORD', 'ADMIN_CLIENT_SECRET', 'ADMIN_PASSWORD', 'TEST_CUSTOMER_PASSWORD', 'NEW_CUSTOMER_PASSWORD', 'SW_ACCESS_KEY'];
 const MASK = '[REDACTED]';
 const DIRS = ['playwright-report', 'test-results'];
 const TEXT = /\.(html|json|md|xml|txt|log|trace|network|stacks|har|js|css)$/i;

@@ -75,7 +75,6 @@ const config: ProjectConfig = {
     customer: {
       emailDomain: 'example.com',
       emailPrefix: 'e2e',
-      password: 'Shopware-E2E-2026!',
       firstName: 'Erika',
       lastName: 'Tester',
       salutationIndex: 1,
@@ -90,8 +89,7 @@ const config: ProjectConfig = {
         phoneNumber: '3145550100',   // required by the registration form
         state: 'California',
       },
-      // default billing + shipping street of the TEST_CUSTOMER_EMAIL account ("Era Gashi, 500 S Buena Vista St,
-      // Burbank", checked 2026-11-05) — update it when the account's default changes
+      // default billing + shipping street of the TEST_CUSTOMER_EMAIL account (checked 2026-11-05) — update it when the account's default changes
       testCustomerDefaultStreet: '500 S Buena Vista St',
     },
     contactLinkText: /Contact Us|Customer Support/i,
