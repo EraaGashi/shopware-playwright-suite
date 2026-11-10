@@ -123,11 +123,13 @@ export async function auditLayout(page: Page, opts: AuditOptions = {}): Promise<
       const overflowX = Math.max(0, doc.scrollWidth - doc.clientWidth);
       const pageClips = ['hidden', 'clip'].includes(getComputedStyle(doc).overflowX) || ['hidden', 'clip'].includes(getComputedStyle(document.body).overflowX);
       const outside = new Set<Element>();
+      // page doesn't scroll sideways: a few px past the edge are Bootstrap gutter margins (.row), nothing visible is cut
+      const tol = overflowX > 1 ? 1 : 3;
       for (const el of visible) {
         const r = el.getBoundingClientRect();
         if (r.width <= 1 || r.height <= 1) continue; // visually-hidden helpers (clip rect)
-        const cutRight = r.right > vw + 1;
-        const cutLeft = r.left < -1;
+        const cutRight = r.right > vw + tol;
+        const cutLeft = r.left < -tol;
         if (!cutRight && !cutLeft) continue;
         if (clipper(el)) continue;
         const fixed = getComputedStyle(el).position === 'fixed';

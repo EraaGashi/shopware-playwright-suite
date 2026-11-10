@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import type { Reporter } from '@playwright/test/reporter';
+import type { FullConfig, Reporter } from '@playwright/test/reporter';
 
 /**
  * Removes secrets from everything a run leaves on disk: HTML report (incl. its embedded data), traces,
@@ -120,13 +120,15 @@ export function redactArtifacts(root = process.cwd(), dirs = DIRS): { scanned: n
     if (!fs.existsSync(dir)) return;
     for (const name of fs.readdirSync(dir)) {
       const file = path.join(dir, name);
-      const stat = fs.lstatSync(file);
+      // another run may empty test-results/ while we walk it
+      const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+      if (!stat) continue;
       if (stat.isDirectory()) { walk(file); continue; }
       if (!stat.isFile()) continue;
       result.scanned++;
-      const buf = fs.readFileSync(file);
       let clean: Buffer | null = null;
       try {
+        const buf = fs.readFileSync(file);
         if (name === 'index.html') clean = scrubHtmlReport(buf, values);
         else if (name.endsWith('.zip')) clean = scrubZip(buf, values) ?? scrub(buf, values);
         else if (TEXT.test(name)) clean = scrub(buf, values);
@@ -141,18 +143,24 @@ export function redactArtifacts(root = process.cwd(), dirs = DIRS): { scanned: n
 }
 
 export default class RedactSecretsReporter implements Reporter {
+  private dirs = DIRS;
+  onBegin(config: FullConfig): void {
+    // per-shop folders when ENV_FILE is set (see playwright.config.ts)
+    const html = config.reporter.find(([name]) => name === 'html')?.[1] as { outputFolder?: string } | undefined;
+    this.dirs = [html?.outputFolder ?? DIRS[0], config.projects[0]?.outputDir ?? DIRS[1]];
+  }
   printsToStdio(): boolean {
     return false;
   }
   async onEnd(): Promise<void> {
-    const { redacted } = redactArtifacts();
+    const { redacted } = redactArtifacts(process.cwd(), this.dirs);
     if (redacted.length) console.log(`[redact-secrets] removed secrets from ${redacted.length} report/trace file(s)`);
   }
 }
 
 // standalone: npx tsx src/reporters/redact-secrets.ts [dir …]
 if (require.main === module) {
-  require('dotenv').config({ path: path.resolve(__dirname, '../../.env'), quiet: true });
+  require('dotenv').config({ path: path.resolve(__dirname, '../../', process.env.ENV_FILE ?? '.env'), quiet: true });
   const dirs = process.argv.slice(2);
   const { scanned, redacted } = redactArtifacts(process.cwd(), dirs.length ? dirs : DIRS);
   console.log(`[redact-secrets] scanned ${scanned} file(s), redacted ${redacted.length}`);

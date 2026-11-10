@@ -103,7 +103,10 @@ export class AuthPage extends BasePage {
       await this.selectCountry(form.locator(r.country).first(), c.address.countryLabel);
       // states are loaded for the selected country → setField waits for the options
       const state = form.locator(r.countryState).first();
-      if (c.address.state && (await state.isVisible())) await this.setField(state, c.address.state);
+      // the state select only appears once the country's states are loaded — isVisible() alone would not wait
+      if (c.address.state && (await state.waitFor({ state: 'visible', timeout: 5_000 }).then(() => true, () => false))) {
+        await this.setField(state, c.address.state);
+      }
     }
     const phone = form.locator(r.phone).first();
     if (c.address.phoneNumber && (await phone.isVisible())) await phone.fill(c.address.phoneNumber);

@@ -84,6 +84,6 @@ pipelines:
     #   - step: { <<: *full, name: All tests – Echonut, deployment: echonut }
     wurth:
       - step: { <<: *full, name: All tests – Würth, deployment: wurth }
-    # needs the deployment environment "miniaturemarket" (ALLOW_WRITE_TESTS=false, WORKERS=1)
+    # needs the deployment environment "miniaturemarket" (WORKERS=1; write tests + test orders allowed)
     miniaturemarket:
       - step: { <<: *full, name: All tests – Miniature Market, deployment: miniaturemarket }

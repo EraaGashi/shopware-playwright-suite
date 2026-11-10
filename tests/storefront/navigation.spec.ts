@@ -10,6 +10,8 @@ test.describe('Main navigation', () => {
   });
 
   test('every main category opens a listing page', async ({ page, cfg, navigation }) => {
+    // one homepage + one category load per main category — too much for the default timeout on slow shops
+    test.slow();
     for (const name of cfg.testData.mainCategories) {
       await page.goto(cfg.routes.home);
       await navigation.openCategory(name);

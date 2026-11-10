@@ -15,6 +15,10 @@ function stopBeforeOrder(orderPlacement: boolean): boolean {
   return true;
 }
 
+// A fixed test account (TEST_CUSTOMER_EMAIL) shares one cart: logged-in tests running side by side add to it
+// while an order is submitted → "Products or prices in your shopping cart may have changed". One at a time.
+test.describe.configure({ mode: 'default' });
+
 test.describe('Checkout', () => {
 
   test('guest is asked to log in or register before confirm', { tag: '@smoke' }, async ({ page, cartHelper, cfg, auth }) => {
@@ -47,7 +51,9 @@ test.describe('Checkout', () => {
     await expect(checkout.finishHeader).toBeVisible();
   });
 
-  test('registered customer places an order and sees it in the account', { tag: '@smoke' }, async ({ loggedInPage: page, cfg, cartHelper, checkout, account }) => {
+  test('registered customer places an order and sees it in the account', { tag: '@smoke' }, async ({ loggedInPage: page, cfg, cart, cartHelper, checkout, account }) => {
+    // leftovers in a fixed test account's cart would be ordered too — or block the order (sold-out items)
+    if (cfg.features.orderPlacement) await cart.clear();
     await cartHelper.add(cfg.testData.simpleProduct, 2);
     await checkout.openConfirm();
     await checkout.expectOnConfirm();
@@ -69,6 +75,8 @@ test.describe('Checkout', () => {
     test.skip(!cfg.selectors.checkout.tos, 'Terms are accepted by placing the order (no checkbox)');
     const tos = page.locator(cfg.selectors.checkout.tos);
     test.skip((await tos.count()) === 0, 'Shop has no TOS checkbox');
+    // the default payment may hide the core submit button (e.g. Google Pay) → use the configured offline one
+    if (cfg.testData.paymentMethod) await checkout.selectPaymentMethod(cfg.testData.paymentMethod);
     await checkout.submitButton.click();
     // Shopware rewrites the URL client-side (history API) without submitting — assert
     // we are still on the confirm page instead of matching the URL.

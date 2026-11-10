@@ -14,7 +14,14 @@ const bypass = bypassHeaders(loadConfig());
 
 /** GET through the page's own session (cookies of the browser) — null = bot protection answered. */
 async function get(page: Page, path: string): Promise<{ res: APIResponse; body: string } | null> {
-  const res = await page.request.get(path, { headers: bypass, maxRedirects: 0, failOnStatusCode: false });
+  const options = { headers: bypass, maxRedirects: 0, failOnStatusCode: false };
+  const res = await page.request.get(path, options).catch(async (error: unknown) => {
+    // a broken body (e.g. Content-Length larger than what is sent) aborts the GET before its status can be read →
+    // HEAD tells the status; anything but 200 means "not served". A 200 with a broken body stays an error.
+    const head = await page.request.head(path, options);
+    if (head.status() === 200) throw error;
+    return head;
+  });
   const body = await res.text().catch(() => '');
   return isBotChallenge(res.status(), res.headers(), body) ? null : { res, body };
 }
@@ -34,8 +41,10 @@ test.describe('Security', () => {
     if (cfg.baseURL.startsWith('https://')) {
       expect.soft(h['strict-transport-security'] ?? '', 'Strict-Transport-Security (HSTS)').toMatch(/max-age=[1-9]\d*/);
     }
-    expect.soft(h['x-powered-by'] ?? '', 'X-Powered-By reveals the server stack').toBe('');
-    expect.soft(h['server'] ?? '', 'Server header reveals a version number').not.toMatch(/\d+\.\d+/);
+    const accepted = cfg.acceptedHeaders ?? [];
+    if (accepted.length) test.info().annotations.push({ type: 'accepted', description: `not checked for this shop: ${accepted.join(', ')}` });
+    if (!accepted.includes('x-powered-by')) expect.soft(h['x-powered-by'] ?? '', 'X-Powered-By reveals the server stack').toBe('');
+    if (!accepted.includes('server')) expect.soft(h['server'] ?? '', 'Server header reveals a version number').not.toMatch(/\d+\.\d+/);
   });
 
   test('session cookie is HttpOnly, Secure and SameSite', async ({ page, context, cfg }) => {
@@ -52,6 +61,9 @@ test.describe('Security', () => {
 
   test('error pages do not reveal debug information', async ({ page, cfg }) => {
     // risk: debug mode in production — stack traces show code paths, versions, sometimes credentials
+    // an error page that never finishes loading uses up the whole navigation timeout per probe (its text is checked
+    // anyway) — the extra time keeps that from ending the test before every probe has been looked at
+    test.slow();
     const probes = [
       `/e2e-security-not-existing-${Date.now()}`,
       `${cfg.routes.search}?search[]=e2e`,

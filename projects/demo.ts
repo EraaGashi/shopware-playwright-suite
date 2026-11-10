@@ -1,3 +1,4 @@
+
 import type { ProjectConfig } from '../src/config/types';
 
 /**

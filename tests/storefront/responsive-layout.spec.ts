@@ -3,6 +3,7 @@ import { test, expect } from '../../src/fixtures';
 import { loadConfig } from '../../src/config/loader';
 import type { ClientPage, ResolvedConfig } from '../../src/config/types';
 import { attachEvidence, auditLayout, formatIssues, settle, stickyCoverage, type LayoutIssue } from '../../src/utils/layout';
+import { closePopups } from '../../src/utils/popups';
 
 /**
  * Responsive layout suite: the key pages (home, listing, product), the navigation and the cart / checkout
@@ -73,12 +74,19 @@ async function expectNoLayoutDefects(page: Page, testInfo: TestInfo, where: stri
   const audit = await auditLayout(page, { ignore: layout.ignore, scope });
   await attachEvidence(page, testInfo, where.replace(/\W+/g, '-').toLowerCase(), audit);
   const at = `${where} (${page.url()})`;
-  if (!scope) {
+  // profile's layout.acceptIssues: findings that are not bugs for this shop, matched against "<page> @ <viewport>"
+  const key = `${where} @ ${VIEWPORTS.find((v) => v.width === page.viewportSize()?.width)?.name ?? ''}`;
+  const accepted = (kind: LayoutIssue['kind']) => {
+    const a = layout.acceptIssues?.find((i) => i.kind === kind && (typeof i.where === 'string' ? key.includes(i.where) : i.where.test(key)));
+    if (a) testInfo.annotations.push({ type: 'accepted', description: `${key}: ${KIND_TITLE[kind]} — ${a.reason}` });
+    return !!a;
+  };
+  if (!scope && !accepted('overflow')) {
     const culprits = audit.issues.filter((i) => i.kind === 'overflow');
     expect.soft(audit.overflowX, formatIssues(`${at}: page is ${audit.overflowX}px wider than the screen — ${KIND_TITLE.overflow}`, audit, culprits)).toBeLessThanOrEqual(1);
   }
   for (const kind of Object.keys(KIND_TITLE) as Array<LayoutIssue['kind']>) {
-    if ((kind === 'overflow' && !scope) || kind === 'small-target') continue;
+    if ((kind === 'overflow' && !scope) || kind === 'small-target' || accepted(kind)) continue;
     const found = audit.issues.filter((i) => i.kind === kind);
     expect.soft(found.length, formatIssues(`${at}: ${KIND_TITLE[kind]}`, audit, found)).toBe(0);
   }
@@ -91,6 +99,7 @@ async function open(page: Page, path: string): Promise<void> {
   test.skip(/just a moment/i.test(await page.title()), 'Inconclusive: Cloudflare bot challenge answered (run headed or allowlist the runner)');
   test.skip(status === 404 || status === 410, `${path} answered ${status} — page/data not available on this shop, layout not checkable`);
   expect(status, `${path} answered HTTP ${status}`).toBeLessThan(400);
+  await closePopups(page, loadConfig());
   await settle(page);
 }
 

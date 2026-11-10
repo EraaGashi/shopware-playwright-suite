@@ -24,7 +24,7 @@ const config: ProjectConfig = {
     simpleProduct: { path: '/adelina-wool-scarf/lar899', productNumber: '2017-LAR899', name: 'Adelina - Wool Scarf' },
     // Cloud Tulle Dress Set exists but has only one option here
     variantProduct: {
-      path: '/adonis-loafer/adon-blac-10',
+      path: '/adonis-loafer/adon-blac-10',  
       productNumber: '2006-Adon-Blac-10',
       name: 'Adonis Loafer',
       optionGroups: ['Color', 'Size (Shoe)'],

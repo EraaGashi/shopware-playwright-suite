@@ -54,7 +54,8 @@ test.describe('Newsletter', () => {
     const s = cfg.selectors.page;
     await expect(
       form.locator(`input:invalid, ${s.invalidField}, ${s.invalidFeedback}`).locator('visible=true').first()
-        .or(page.locator(s.alertDanger).locator('visible=true').first()),
+        .or(page.locator(s.alertDanger).locator('visible=true').first())
+        .first(), // some shops show the field error and the alert together
     ).toBeVisible();
     await expect(page.locator(s.alertSuccess).locator('visible=true')).toHaveCount(0);
   });

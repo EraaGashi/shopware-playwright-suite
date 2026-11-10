@@ -4,7 +4,8 @@ import * as dotenv from 'dotenv';
 import { shopware67Selectors, type Selectors } from '../selectors/shopware67';
 import type { ProjectConfig, ResolvedConfig } from './types';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env'), quiet: true });
+// ENV_FILE=.env.wurth picks another env file (one per shop, so several shops can run side by side)
+dotenv.config({ path: path.resolve(__dirname, '../../', process.env.ENV_FILE ?? '.env'), quiet: true });
 
 const bool = (v: string | undefined, fallback: boolean) =>
   v === undefined || v === '' ? fallback : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase());

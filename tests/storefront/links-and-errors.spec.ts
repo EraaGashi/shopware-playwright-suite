@@ -1,5 +1,6 @@
 import { test, expect } from '../../src/fixtures';
 import { loadConfig } from '../../src/config/loader';
+import { withoutReportedBugs } from '../../src/utils/reported-bugs';
 
 test.describe('Important links & redirects', () => {
   test('important pages respond without error', { tag: '@smoke' }, async ({ request, cfg }) => {
@@ -18,7 +19,7 @@ test.describe('Important links & redirects', () => {
     });
   }
 
-  test('header and footer links on the homepage are not broken', async ({ page, request, cfg }) => {
+  test('header and footer links on the homepage are not broken', async ({ page, request, cfg }, testInfo) => {
     test.slow(); // up to 60 requests one after another — slow staging servers need the extra time
     await page.goto(cfg.routes.home);
     const hrefs = await page
@@ -26,7 +27,7 @@ test.describe('Important links & redirects', () => {
       // getAttribute: SVG <a> elements expose href as SVGAnimatedString, not a string
       .evaluateAll((as) => as.map((a) => new URL(a.getAttribute('href') ?? '', document.baseURI).href));
     const origin = new URL(cfg.baseURL).origin;
-    const internal = [...new Set(hrefs)].filter((h) => h.startsWith(origin) && !h.includes('/account/logout')).slice(0, 60);
+    const internal = withoutReportedBugs([...new Set(hrefs)].filter((h) => h.startsWith(origin) && !h.includes('/account/logout')), cfg.reportedBugs?.brokenLinks, testInfo).slice(0, 60);
     const broken: string[] = [];
     for (const href of internal) {
       const res = await request.get(href, { maxRedirects: 5 });

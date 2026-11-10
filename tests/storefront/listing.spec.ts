@@ -1,7 +1,7 @@
 import { test, expect } from '../../src/fixtures';
 import { isSortedAsc, isSortedDesc } from '../../src/utils/price';
 import type { ListingPage } from '../../src/pages/ListingPage';
-import { DEFAULT_PAGE_SIZE, DEFAULT_SEARCH_RESULT_WINDOW, pagesBeyondEnd, withPage } from '../../src/utils/paging';
+import { DEFAULT_PAGE_SIZE, pagesBeyondEnd, withPage } from '../../src/utils/paging';
 
 test.describe('Product listing', () => {
   test.beforeEach(async ({ listing, cfg }) => {
@@ -76,7 +76,7 @@ test.describe('Sorting', () => {
       if (lastPage > 1) expect(await listing.productHrefs(), 'last page shows the products of page 1').not.toEqual(firstPage);
     });
 
-    for (const { p, label } of pagesBeyondEnd(lastPage, pageSize, cfg.testData.searchResultWindow ?? DEFAULT_SEARCH_RESULT_WINDOW)) {
+    for (const { p, label } of pagesBeyondEnd(lastPage, pageSize)) {
       await test.step(label, async () => {
         const res = await page.goto(withPage(path, p));
         expect.soft(res?.status(), `${label} on ${path}`).toBeLessThan(500);

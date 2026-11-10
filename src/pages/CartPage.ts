@@ -174,6 +174,18 @@ export class CartPage extends BasePage {
     await this.waitForXhr('/checkout/promotion/add', () => this.$(this.s.cart.promotionSubmit).first().click());
   }
 
+  /** Removes every line (a fixed test account's cart keeps leftovers of earlier runs). */
+  async clear(): Promise<void> {
+    await this.open();
+    for (const line of await this.lines()) await this.removeByHref(line.href);
+    // lines without a product link (themes whose line label is plain text) are not in lines() → remove them directly
+    for (let left = await this.lineItems.count(); left > 0; left--) {
+      await this.waitForXhr('/checkout/line-item/delete', () => this.lineItems.first().locator(this.s.cart.remove).first().click());
+      await this.page.waitForLoadState('domcontentloaded');
+    }
+    await this.expectEmpty();
+  }
+
   async expectEmpty(): Promise<void> {
     await expect(this.lineItems).toHaveCount(0);
   }

@@ -62,16 +62,16 @@ const config: ProjectConfig = {
     // main nav root links (desktop), in display order
     mainCategories: ["Women's", "Men's", 'Kids', 'Beauty', 'Home', 'Travel', 'Wellness'],
     listingCategoryPath: '/Women-s/',   // 130 products, sorting + manufacturer/property/price filters
-    // dev (verified 2026-10-26): 24 per page → p=2083 still 200, p=2084 → 500, i.e. the window is 50000 (Shopware default: 10000)
-    searchResultWindow: 50_000,
+    // deep-page tests stop at Shopware's default 10000 result window (p=417 with 24 per page → 200 on dev, 2026-11-05)
 
     // ⚠ No usable simple product: products without a configurator (Callie Pump, TEST …) cost $0.00
     // and get "No longer available from a seller" in the cart (no Mirakl offer). Same as Echonut,
     // a variant child with a live offer stands in. The reference suite's Lodge Hoodie is sold out.
     // 2026-11-02: Breeze Tutu Skirt (PTE7039301) lost its offer → Arahi 8 ($99.99, ordered in test order #10203)
+    // 2026-11-09: 1168690011 (Varsity Navy US 9.5 Wide) shows "(Unavailable)" → Varsity Navy US 8 Regular, which has an offer
     simpleProduct: {
-      path: '/Arahi-8/1168690011',
-      productNumber: '1168690011',
+      path: '/Arahi-8/1168690001',
+      productNumber: '1168690001',
       name: 'Arahi 8',
     },
 
@@ -100,12 +100,14 @@ const config: ProjectConfig = {
       // ("addresses page lists the default address" looks for the street, the name test restores the name).
       address: {
         // not asked for at /account/register — used by the guest checkout form and Store API registration
-        street: '1 Test Street',
-        zipcode: '10001',
-        city: 'New York',
+        // must be a real address: dev validates it ("Your shipping address could not be validated" blocks
+        // the order for the made-up "1 Test Street, 10001 New York", 2026-11-05) — same as the test account's
+        street: '100 Congress Avenue',
+        zipcode: '78701',
+        city: 'Austin',
         countryIso: 'US',
         countryLabel: 'United States',   // checkout: "United States of America" (only country)
-        state: 'New York',               // required in the dev guest checkout ("Input should not be empty")
+        state: 'Texas',                  // required in the dev guest checkout ("Input should not be empty")
       },
       // default billing + shipping street of the TEST_CUSTOMER_EMAIL account, per host (checked 2026-11-05):
       // dev.themallstreet.com "100 Congress Avenue, Austin, TX 78701", cloud7 "maple street, 1111111 California"
@@ -129,13 +131,18 @@ const config: ProjectConfig = {
     { test: 'search suggest shows products while typing', reason: 'no header search; the inspiration search has no suggest dropdown' },
     { test: 'guest can add a product to the wishlist', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
     { test: 'wishlist page shows added product and allows removal', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
+    // remove once the legal texts are published
+    { test: 'mandatory legal pages are linked in the footer and load', reason: 'legal content not written yet: Terms & Conditions, Privacy policy and Returns & refund link to the /coming-soon placeholder (dev) or have only 13–15 words (cloud7) — 2026-11-05' },
   ],
 
   // Confirmed shop findings (2026-10-19) — tests stay "expected to fail" until fixed, then remove the entry.
   knownIssues: [
     { test: 'shows core product information', reason: 'PDP shows no product number and no tax notice (price "$98.00" without any tax hint); name, price, buy button, gallery and description are fine' },
-    { test: 'mandatory legal pages are linked in the footer and load', reason: 'Terms & Conditions, Privacy policy and Returns & refund load but have only 13–15 words of content' },
   ],
+
+  // dev 2026-11-09: a "Subscribe our newsletter" modal opens on every page load (also after closing it — nothing
+  // remembers the close) and covers the whole page
+  dismissPopups: [{ popup: '.modal.show:has-text("Subscribe our newsletter")', close: 'button[aria-label="Close"], .btn-close' }],
 
   redirects: [
     { from: '/account', to: '/account/login' },

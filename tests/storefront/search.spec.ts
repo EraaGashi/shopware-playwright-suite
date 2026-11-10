@@ -1,5 +1,5 @@
 import { test, expect } from '../../src/fixtures';
-import { DEFAULT_PAGE_SIZE, DEFAULT_SEARCH_RESULT_WINDOW, pagesBeyondEnd, withPage } from '../../src/utils/paging';
+import { DEFAULT_PAGE_SIZE, pagesBeyondEnd, withPage } from '../../src/utils/paging';
 
 test.describe('Product search', () => {
   test('search via header returns matching products', { tag: '@smoke' }, async ({ page, cfg, header, listing }) => {
@@ -30,7 +30,7 @@ test.describe('Product search', () => {
     await page.goto(path);
     const { lastPage, productsOnPage, pageSize = DEFAULT_PAGE_SIZE } = await listing.paginationInfo();
     expect(productsOnPage, `no results for "${cfg.testData.searchTerm}"`).toBeGreaterThan(0);
-    for (const { p, label } of pagesBeyondEnd(lastPage, pageSize, cfg.testData.searchResultWindow ?? DEFAULT_SEARCH_RESULT_WINDOW)) {
+    for (const { p, label } of pagesBeyondEnd(lastPage, pageSize)) {
       await test.step(label, async () => {
         const res = await page.goto(withPage(path, p));
         expect.soft(res?.status(), `${label} on ${path}`).toBeLessThan(500);

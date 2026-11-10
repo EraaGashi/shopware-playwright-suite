@@ -22,6 +22,7 @@ test.describe('Cart across login and sessions', () => {
 
   test('guest cart and saved account cart are merged at login', async ({ page, cfg, auth, account, cart, cartHelper, customer }) => {
     // risk: logging in drops the guest's items or the account's saved items, or duplicates lines
+    test.slow(); // login, two cart adds, logout and a second login — too much for the default timeout on slow shops
     const { variantProduct: saved, simpleProduct: guest } = cfg.testData;
     test.skip(saved.name === guest.name, 'simple and variant product have the same name');
     await ensureLoggedIn(page, cfg, customer);

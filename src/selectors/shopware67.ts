@@ -249,6 +249,8 @@ export const shopware67Selectors = {
     shippingMethodLabel: '.shipping-method-label',
     address: '.confirm-address',
     lineItem: '.line-item-product',
+    /** line total on the confirm page ('' = same as cart.lineItemTotal) */
+    lineItemTotal: '',
     finishHeader: '.finish-header',
     finishOrderNumber: '.finish-ordernumber',
   },

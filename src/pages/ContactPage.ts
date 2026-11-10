@@ -32,8 +32,10 @@ export class ContactPage extends BasePage {
   async fill(d: ContactData): Promise<void> {
     const c = this.s.contact;
     const f = this.form;
-    if (d.salutationIndex !== undefined && (await f.locator(c.salutation).count()))
-      await f.locator(c.salutation).selectOption({ index: d.salutationIndex });
+    // themes without a salutation field keep it as a hidden input with a preset value → nothing to choose
+    const salutation = f.locator(`select${c.salutation}`);
+    if (d.salutationIndex !== undefined && (await salutation.count()))
+      await salutation.selectOption({ index: d.salutationIndex });
     const pairs: [string, string | undefined][] = [
       [c.firstName, d.firstName],
       [c.lastName, d.lastName],
@@ -43,8 +45,21 @@ export class ContactPage extends BasePage {
       [c.comment, d.comment],
     ];
     for (const [sel, val] of pairs) {
+      const field = f.locator(sel).first();
       // hidden fields are preset by the theme (e.g. lastName="-" when only one name field is shown)
-      if (val !== undefined && (await f.locator(sel).first().isVisible())) await f.locator(sel).first().fill(val);
+      if (val === undefined || !(await field.isVisible())) continue;
+      // some themes offer the subject as a dropdown of request types → pick the first real option
+      if ((await field.evaluate((e) => e.tagName)) === 'SELECT') {
+        const first = await field.locator('option:not([disabled])').evaluateAll((o) => (o as HTMLOptionElement[]).find((x) => x.value)?.value);
+        if (first) await field.selectOption(first);
+      } else await field.fill(val);
+    }
+    for (const x of this.cfg.testData.contactExtraFields ?? []) {
+      const field = f.locator(x.selector).first();
+      const kind = await field.evaluate((e) => (e.tagName === 'INPUT' ? (e as HTMLInputElement).type : e.tagName.toLowerCase()));
+      if (kind === 'checkbox' || kind === 'radio') await field.check({ force: true });
+      else if (kind === 'select') await field.selectOption(x.value ?? { index: 1 });
+      else await field.fill(x.value ?? '');
     }
   }
 
