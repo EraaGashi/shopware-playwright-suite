@@ -69,7 +69,6 @@ const config: ProjectConfig = {
     customer: {
       emailDomain: 'example.com',
       emailPrefix: 'e2e',
-      password: 'Shopware-E2E-2026!',
       firstName: 'Erika',
       lastName: 'Tester',
       salutationIndex: 1,            // options: ['Select from the list','Not specified','Mrs.','Mr.'] -> 1 = "Not specified"

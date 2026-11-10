@@ -166,7 +166,6 @@ export interface ProjectConfig {
     customer: {
       emailDomain: string;
       emailPrefix: string;
-      password: string;
       firstName: string;
       lastName: string;
       /** Salutation option index in the select (0 = "not specified"). */
