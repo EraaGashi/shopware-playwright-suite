@@ -133,6 +133,9 @@ const config: ProjectConfig = {
     { test: 'wishlist page shows added product and allows removal', reason: 'wishlist is for logged-in customers only (header wishlist sends guests to the login)' },
     // remove once the legal texts are published
     { test: 'mandatory legal pages are linked in the footer and load', reason: 'legal content not written yet: Terms & Conditions, Privacy policy and Returns & refund link to the /coming-soon placeholder (dev) or have only 13–15 words (cloud7) — 2026-11-05' },
+    // remove once the seller offers are back (reports/bugs/mallstreet-dev-no-seller-offers.md)
+    { test: 'guest checkout places an order', reason: 'dev.themallstreet.com has no seller offers since 2026-11-10 — every product is "No longer available from a seller", ordering is blocked' },
+    { test: 'registered customer places an order and sees it in the account', reason: 'dev.themallstreet.com has no seller offers since 2026-11-10 — every product is "No longer available from a seller", ordering is blocked' },
   ],
 
   // Confirmed shop findings (2026-10-19) — tests stay "expected to fail" until fixed, then remove the entry.
