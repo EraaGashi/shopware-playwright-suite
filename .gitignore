@@ -4,6 +4,8 @@ node_modules/
 !.env.example
 test-results*/
 playwright-report*/
+# central QA report input/output (results.json, summary.json) — per shop when ENV_FILE is set
+qa-report*/
 blob-report/
 playwright/.cache/
 .auth/

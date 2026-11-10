@@ -19,12 +19,15 @@
     "test:list": "playwright test --list",
     "report": "playwright show-report",
     "typecheck": "tsc --noEmit",
+    "summary": "tsx scripts/make-summary.ts",
+    "test:summary": "tsx --test scripts/make-summary.test.ts",
     "install:browsers": "playwright install --with-deps chromium"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.0",
     "dotenv": "^17.2.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.0"
   },
   "engines": {

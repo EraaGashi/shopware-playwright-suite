@@ -5,7 +5,7 @@ import type { FullConfig, Reporter } from '@playwright/test/reporter';
 
 /**
  * Removes secrets from everything a run leaves on disk: HTML report (incl. its embedded data), traces,
- * error-context files, JUnit XML. Playwright writes request headers (the bot-protection bypass header) and
+ * error-context files, JUnit XML, the JSON report (qa-report/results.json). Playwright writes request headers (the bot-protection bypass header) and
  * typed form values (passwords) in clear text into call logs and traces — it has no redaction of its own.
  *
  * Runs as the LAST reporter: by then the HTML / JUnit reporters have written their files.
@@ -16,7 +16,7 @@ import type { FullConfig, Reporter } from '@playwright/test/reporter';
 /** Env variables whose values must never appear in artifacts. */
 const SECRET_VARS = ['E2E_HEADER_VALUE', 'HTTP_PASSWORD', 'ADMIN_CLIENT_SECRET', 'ADMIN_PASSWORD', 'TEST_CUSTOMER_PASSWORD', 'NEW_CUSTOMER_PASSWORD', 'SW_ACCESS_KEY'];
 const MASK = '[REDACTED]';
-const DIRS = ['playwright-report', 'test-results'];
+const DIRS = ['playwright-report', 'test-results', 'qa-report'];
 const TEXT = /\.(html|json|md|xml|txt|log|trace|network|stacks|har|js|css)$/i;
 
 function secrets(): string[] {
@@ -147,7 +147,9 @@ export default class RedactSecretsReporter implements Reporter {
   onBegin(config: FullConfig): void {
     // per-shop folders when ENV_FILE is set (see playwright.config.ts)
     const html = config.reporter.find(([name]) => name === 'html')?.[1] as { outputFolder?: string } | undefined;
-    this.dirs = [html?.outputFolder ?? DIRS[0], config.projects[0]?.outputDir ?? DIRS[1]];
+    // + the JSON reporter's folder (qa-report/results.json is uploaded for the central QA report)
+    const json = config.reporter.find(([name]) => name === 'json')?.[1] as { outputFile?: string } | undefined;
+    this.dirs = [html?.outputFolder ?? DIRS[0], config.projects[0]?.outputDir ?? DIRS[1], json?.outputFile ? path.dirname(json.outputFile) : DIRS[2]];
   }
   printsToStdio(): boolean {
     return false;

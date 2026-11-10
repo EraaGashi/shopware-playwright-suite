@@ -12,7 +12,7 @@ new client project and adapted through **one project profile file** instead of c
 npm ci
 npx playwright install --with-deps chromium
 cp .env.example .env          # fill in admin API credentials (see below)
-npm run test:smoke            # ~45 critical tests, chromium
+npm run test:smoke            # critical @smoke tests, chromium
 npm test                      # full suite: chromium + mobile (Pixel 7)
 npm run report                # open HTML report
 ```
@@ -184,14 +184,64 @@ They are deleted after each test and a teardown project deletes any leftovers by
 
 ## CI
 
-- **GitLab**: `.gitlab-ci.yml` — `smoke` on MRs/default branch, sharded `regression` nightly (schedule) or manually.
-- **GitHub Actions**: `.github/workflows/playwright.yml` — one job per shop (GitHub environment per shop, same variable names as Bitbucket): smoke on PRs and pushes to main, full run nightly, any shop / mode by hand. Shops without a `BASE_URL` in their environment are skipped.
+- **GitHub Actions**: `.github/workflows/playwright.yml` — one job per shop (GitHub environment per shop): smoke on PRs and pushes to main, one scheduled smoke run per shop on weekdays, any shop / mode by hand. Shops without a `BASE_URL` secret in their environment are skipped. Results go to the central QA report (below).
 - **Bitbucket Pipelines**: `bitbucket-pipelines.yml` — one parallel step per shop (Mall Street, Echonut, Würth): smoke on PRs and `main`, every test in `custom: nightly-all-shops` (schedule it under *Pipelines → Schedules*), single shops via `custom: mallstreet | echonut | wurth`. Each shop's variables live in its deployment environment (*Repository settings → Deployments*, same names as `.env`, secrets "Secured"); steps run `ci/e2e.sh`. For now Mall Street and Würth are active; Echonut and Miniature Market (manual pipeline `custom: miniaturemarket` only) follow once their environments exist. `WORKERS=1` in an environment limits parallel browsers for shops that rate-limit (HTTP 429).
+- **GitLab**: `.gitlab-ci.yml` — `smoke` on MRs/default branch, sharded `regression` nightly (schedule) or manually.
+
+Both GitHub and Bitbucket use the official `mcr.microsoft.com/playwright` image (keep its version in sync with
+`@playwright/test`). Bitbucket publishes the HTML report, traces/videos of failures and a JUnit report.
+
+### GitHub repo is public
+
+Anyone can read this repo's Actions logs, so:
+
+- **no artifacts** are uploaded (no HTML report / traces to download) and **traces, videos and screenshots are off** in GitHub Actions (`GITHUB_ACTIONS` is set). Local and Bitbucket runs keep them. Failure details are in the job summary, the log and `results.json` on Profihost.
+- everything that names a shop host or logs in is an environment **secret**: `BASE_URL`, `E2E_HEADER_NAME` / `E2E_HEADER_VALUE`, `HTTP_*`, `ADMIN_*`, `TEST_CUSTOMER_*`, `NEW_CUSTOMER_PASSWORD`, `SW_ACCESS_KEY`. **Variables** (visible in logs) are only for switches: `ALLOW_WRITE_TESTS`, `CLEANUP_TEST_DATA`, `WORKERS`, `HEADED`, `EXTRA_BROWSERS`, `LAYOUT_VIEWPORTS`.
+
+### Schedule (GitHub Actions, Monday–Friday, UTC)
+
+| Shop (environment) | Slot (UTC) | Run |
+|---|---:|---|
+| Würth (`wurth`) | 17:17 | smoke |
+| B&G (`bg`) | 17:37 | smoke |
+| DinoParts (`dinoparts`) | 17:57 | smoke |
+| Mall Street (`mallstreet`) | 18:25 | smoke |
+| Miniature Market (`miniaturemarket`) | 18:43 | smoke |
+
+The central report runs at **19:00 UTC** and reads today's (UTC) uploads, so every run must finish by **18:55 UTC**; the last deploys are at 18:00 local. The test step of a scheduled run is cut off at 18:50 UTC (it then reports `FAILED`), so the summary and upload still arrive in time. The crons live in the workflow's `schedule:` list **and** in the `plan` job's `case` (it maps the cron that fired to its shop) — change both together.
+
+### Central QA reporting
+
+Every scheduled and manual run (not PR / push runs) of a shop does, after the tests:
+
+1. Playwright writes `qa-report/results.json` (JSON reporter; `redact-secrets` scrubs it like the other reports).
+2. **Build QA summary** — `scripts/make-summary.ts` (shared QA reporting kit copy) turns it into `qa-report/summary.json` (`schemaVersion: 1`: project `team-007-shopware-automation`, environment = shop, owner, status `PASSED` / `PASSED_WITH_FLAKY` / `FAILED`, counts, duration, branch, commit, trigger, run link, timestamp, failed tests with their first error line). A missing or broken `results.json`, or an error outside the tests (e.g. the setup failed), is `FAILED`. Flaky tests are found through the CI retries, so keep `retries` ≥ 1 in CI.
+3. **Upload to Profihost** — `ci/upload-profihost.sh` puts `summary.json` and `results.json` via `sftp -b` into `qa-reports/<project>/<environment>/<YYYY-MM-DD>/<HHMMSS>/` (date + time from the summary's `timestamp`, UTC). If `results.json` is missing, `summary.json` alone still carries the `FAILED` status. An upload problem never fails the job: it shows as a warning and in the job summary.
+
+Repository secrets (*Settings → Secrets and variables → Actions*, shared by all shops):
+
+| Secret | |
+|---|---|
+| `PROFIHOST_HOST` | SFTP host. Not set → the upload is skipped with a notice (pipeline stays green). |
+| `PROFIHOST_USER` | SFTP user (SFTP-only accounts work) |
+| `PROFIHOST_SSH_KEY` | ed25519 private key of that user |
+| `PROFIHOST_KNOWN_HOSTS` | output of `ssh-keyscan <host>` (non-22 port: `ssh-keyscan -p <port> <host>`) — checked with `StrictHostKeyChecking=yes` |
+| `PROFIHOST_PORT` | optional, default 22 |
+
+Once `PROFIHOST_HOST` is set, a missing user / key / known-hosts secret is an upload **failure** (warning), not a skip.
+
+Locally:
+
+```bash
+npm run test:summary                         # self-check of make-summary (fixtures in scripts/__fixtures__)
+PROJECT=team-007-shopware-automation ENVIRONMENT=wurth OWNER="Era Gashi" npm run summary   # qa-report/ → summary.json
+```
+
+`scripts/make-summary.ts`, its test and fixtures are the shared copy from the QA reporting kit — **keep them identical across all QA repos** (change them in the kit, then copy). The script always reads `qa-report/results.json`. Runs with `ENV_FILE=.env.<shop>` (e.g. `npm run test:all`, shops in parallel) write to `qa-report-<shop>/` instead; to summarize one, copy it over first: `rm -rf qa-report && cp -R qa-report-wurth qa-report`.
+
+**Re-run rule:** after a hotfix, re-run the suite by hand (*Actions → Playwright E2E → Run workflow*, the shop, mode `smoke`), then re-run the central report job — it uses the **latest run of the day** per shop.
 
 Delete the CI files you don't use.
-
-Both use the official `mcr.microsoft.com/playwright` image (keep its version in sync with
-`@playwright/test`) and publish the HTML report, traces/videos of failures and a JUnit report.
 
 ---
 
