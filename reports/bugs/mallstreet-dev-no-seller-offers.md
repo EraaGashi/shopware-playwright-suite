@@ -15,3 +15,5 @@
 **Screenshot:** mallstreet-dev-no-seller-offers.png
 
 **Checked:** 2026-11-10
+
+**Resolved:** 2026-11-10 — offers are back (Arahi 8, Speedgoat); both order tests pass again on dev.
