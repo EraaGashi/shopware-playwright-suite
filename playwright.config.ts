@@ -8,6 +8,12 @@ const isCI = !!process.env.CI;
 const runTag = process.env.ENV_FILE?.replace(/^.*\.env\.?/, '');
 const reportDir = runTag ? `playwright-report-${runTag}` : 'playwright-report';
 const resultsDir = runTag ? `test-results-${runTag}` : 'test-results';
+// central QA reporting: qa-report/results.json → scripts/make-summary.ts (shared, reads qa-report/ only) → summary.json;
+// ENV_FILE runs (shops in parallel) get their own folder so they don't overwrite each other
+const qaReportDir = runTag ? `qa-report-${runTag}` : 'qa-report';
+// the GitHub repo is public: anyone can read its logs, so no traces / videos / screenshots of the shops there
+// (Bitbucket and local runs keep them)
+const publicCI = !!process.env.GITHUB_ACTIONS;
 
 const extraBrowsers = (process.env.EXTRA_BROWSERS ?? '')
   .split(',')
@@ -48,8 +54,8 @@ export default defineConfig({
 
   // redact-secrets must stay LAST: it scrubs secrets from the files the reporters before it have written
   reporter: isCI
-    ? [['list'], ['html', { open: 'never', outputFolder: reportDir }], ['junit', { outputFile: `${resultsDir}/junit.xml` }], ['./src/reporters/redact-secrets.ts']]
-    : [['list'], ['html', { open: runTag ? 'never' : 'on-failure', outputFolder: reportDir }], ['./src/reporters/redact-secrets.ts']],
+    ? [['list'], ['html', { open: 'never', outputFolder: reportDir }], ['junit', { outputFile: `${resultsDir}/junit.xml` }], ['json', { outputFile: `${qaReportDir}/results.json` }], ['./src/reporters/redact-secrets.ts']]
+    : [['list'], ['html', { open: runTag ? 'never' : 'on-failure', outputFolder: reportDir }], ['json', { outputFile: `${qaReportDir}/results.json` }], ['./src/reporters/redact-secrets.ts']],
 
   metadata: { project: cfg.name, baseURL: cfg.baseURL },
 
@@ -57,9 +63,9 @@ export default defineConfig({
     baseURL: cfg.baseURL,
     httpCredentials: cfg.env.httpCredentials,
     locale: cfg.locale,
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: publicCI ? 'off' : 'retain-on-failure',
+    screenshot: publicCI ? 'off' : 'only-on-failure',
+    video: publicCI ? 'off' : 'retain-on-failure',
     actionTimeout: cfg.timeouts?.action ?? 15_000,
     navigationTimeout: cfg.timeouts?.navigation ?? 30_000,
   },
